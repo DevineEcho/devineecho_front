@@ -3,11 +3,13 @@ import * as PIXI from 'pixi.js';
 import initialBackground from './images/initialBackground.jpeg';
 import introVideo from './video/Test.mp4';
 import hoverSoundFile from './sounds/ButtonSound.mp3';
+import DivineEchoGameCore from './DivineEchoGameCore';
 
-function DivineEchoGame() {
+function DivineEchoGameUI() {
     const pixiContainer = useRef(null);
     const pixiApp = useRef(null);
     const [hoverSound, setHoverSound] = useState(null);
+    const gameCore = useRef(null); // Core 관리
 
     useEffect(() => {
         pixiApp.current = new PIXI.Application({
@@ -57,7 +59,6 @@ function DivineEchoGame() {
         const button = new PIXI.Container();
         const buttonBackground = new PIXI.Graphics();
 
-        // 기본 상태의 버튼 배경
         const drawButtonBackground = (color) => {
             buttonBackground.clear();
             buttonBackground.beginFill(color);
@@ -65,12 +66,12 @@ function DivineEchoGame() {
             buttonBackground.endFill();
         };
 
-        drawButtonBackground(0x444444); // 어두운 회색 배경색으로 초기화
+        drawButtonBackground(0x444444);
 
         const buttonText = new PIXI.Text(text, {
             fontFamily: 'Arial',
             fontSize: 32,
-            fill: 0xb22222, // 어두운 붉은색 (고어한 느낌)
+            fill: 0xb22222,
             align: 'center',
             fontWeight: 'bold',
         });
@@ -85,7 +86,7 @@ function DivineEchoGame() {
         button.scale.set(1.2, 1.2);
 
         button.on('pointerover', () => {
-            drawButtonBackground(0x666666); // 호버 시 밝은 색상
+            drawButtonBackground(0x666666);
             if (hoverSound) {
                 hoverSound.currentTime = 0;
                 hoverSound.play();
@@ -93,7 +94,7 @@ function DivineEchoGame() {
         });
 
         button.on('pointerout', () => {
-            drawButtonBackground(0x444444); // 기본 색상으로 복원
+            drawButtonBackground(0x444444);
         });
 
         button.on('pointerdown', onClick);
@@ -143,11 +144,9 @@ function DivineEchoGame() {
     };
 
     const playIntroVideo = () => {
-        // 비디오 스프라이트 생성
         const videoTexture = PIXI.Texture.from(introVideo);
         const videoSprite = new PIXI.Sprite(videoTexture);
 
-        // 비디오 크기와 위치 설정
         videoSprite.width = pixiApp.current.screen.width;
         videoSprite.height = pixiApp.current.screen.height;
         videoSprite.x = 0;
@@ -155,7 +154,6 @@ function DivineEchoGame() {
 
         pixiApp.current.stage.addChild(videoSprite);
 
-        // 스킵 버튼 생성
         const skipButton = new PIXI.Graphics();
         skipButton.beginFill(0xff0000);
         skipButton.drawRoundedRect(0, 0, 100, 40, 10);
@@ -163,7 +161,6 @@ function DivineEchoGame() {
         skipButton.interactive = true;
         skipButton.buttonMode = true;
 
-        // 스킵 버튼 텍스트
         const skipText = new PIXI.Text('건너띄기', {
             fontFamily: 'Arial',
             fontSize: 16,
@@ -174,36 +171,35 @@ function DivineEchoGame() {
         skipText.x = 50;
         skipText.y = 20;
 
-        // 스킵 버튼 컨테이너
         const skipButtonContainer = new PIXI.Container();
         skipButtonContainer.addChild(skipButton, skipText);
-        skipButtonContainer.x = pixiApp.current.screen.width - 110; // 우측 상단 위치
+        skipButtonContainer.x = pixiApp.current.screen.width - 110;
         skipButtonContainer.y = 10;
         pixiApp.current.stage.addChild(skipButtonContainer);
 
-        // 스킵 버튼 동작
         const skipVideo = () => {
             videoSprite.texture.baseTexture.resource.source.pause();
-            pixiApp.current.stage.removeChild(videoSprite, skipButtonContainer); // 비디오와 버튼 제거
-            startGame(); // 게임 시작
+            pixiApp.current.stage.removeChild(videoSprite, skipButtonContainer);
+            startGame();
         };
 
         skipButtonContainer.on('pointerdown', skipVideo);
 
-        // 비디오 종료 시 게임 시작
         videoTexture.baseTexture.resource.source.onended = () => {
             skipVideo();
         };
     };
 
     const startGame = (playerData = null) => {
-        console.log('Game started with data:', playerData);
+        pixiApp.current.stage.removeChildren();
+        gameCore.current = new DivineEchoGameCore(pixiApp.current);
         if (playerData) {
-            // playerData의 정보에 따라 스테이지와 상태 설정
+            console.log('Player data loaded into core:', playerData);
+            // playerData에 따른 초기화 로직 추가 가능
         }
     };
 
     return <div ref={pixiContainer} style={{ width: '100%', height: '100%' }} />;
 }
 
-export default DivineEchoGame;
+export default DivineEchoGameUI;

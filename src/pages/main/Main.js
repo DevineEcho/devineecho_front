@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import GameboyImage from './Gameboy.png';
 import Login from '../login/Login';
-import DivineEchoGame from '../game/DivineEchoGame';
+import DivineEchoGame from '../game/DivineEchoGameUI';
 import './Main.css';
 
 function Main() {
