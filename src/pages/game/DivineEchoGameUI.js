@@ -9,7 +9,7 @@ function DivineEchoGameUI() {
     const pixiContainer = useRef(null);
     const pixiApp = useRef(null);
     const [hoverSound, setHoverSound] = useState(null);
-    const gameCore = useRef(null); // Core 관리
+    const gameCore = useRef(null);
 
     useEffect(() => {
         pixiApp.current = new PIXI.Application({
@@ -195,7 +195,6 @@ function DivineEchoGameUI() {
         gameCore.current = new DivineEchoGameCore(pixiApp.current);
         if (playerData) {
             console.log('Player data loaded into core:', playerData);
-            // playerData에 따른 초기화 로직 추가 가능
         }
     };
 

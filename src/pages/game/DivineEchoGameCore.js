@@ -13,6 +13,7 @@ import Boss4 from './images/Boss4.png';
 import SaintAura from './images/SaintAura.png';
 import GodsHammer from './images/GodsHammer.png';
 import HolyCircle from './images/HolyCircle.png';
+import Explosion from './images/Explosion.png';
 
 class DivineEchoGameCore {
     constructor(app) {
@@ -57,10 +58,48 @@ class DivineEchoGameCore {
         this.experienceBar = null;
         this.experienceText = null;
         this.levelText = null;
-        this.lastHolyCircleTime = 0; // 마지막 Holy Circle 발사 시점
-        this.holyCircleCooldown = 1000; // 발사 간격 (ms)
+        this.lastHolyCircleTime = 0;
+        this.holyCircleCooldown = 1000;
 
-        this.init();
+        this.textures = {};
+
+        this.preloadAssets().then(() => {
+            this.init();
+        });
+    }
+
+    async preloadAssets() {
+        const imagePaths = {
+            map1,
+            map2,
+            map3,
+            map4,
+            map5,
+            AngelKnight,
+            Devil,
+            Boss1,
+            Boss2,
+            Boss3,
+            Boss4,
+            SaintAura,
+            GodsHammer,
+            HolyCircle,
+            Explosion,
+        };
+
+        const loadTexture = (key, path) => {
+            return new Promise((resolve) => {
+                const image = new Image();
+                image.src = path;
+                image.onload = () => {
+                    this.textures[key] = PIXI.Texture.from(image);
+                    resolve();
+                };
+            });
+        };
+
+        const promises = Object.entries(imagePaths).map(([key, path]) => loadTexture(key, path));
+        await Promise.all(promises);
     }
 
     init() {
@@ -77,21 +116,27 @@ class DivineEchoGameCore {
     }
 
     createMap() {
-        const mapImages = [map1, map2, map3, map4, map5];
-        const mapImage = mapImages[this.stage - 1] || map1;
+        const mapImages = [
+            this.textures.map1,
+            this.textures.map2,
+            this.textures.map3,
+            this.textures.map4,
+            this.textures.map5,
+        ];
+        const mapTexture = mapImages[this.stage - 1] || this.textures.map1;
 
         if (this.map) {
             this.camera.removeChild(this.map);
         }
 
-        this.map = PIXI.Sprite.from(mapImage);
+        this.map = new PIXI.Sprite(mapTexture);
         this.map.width = this.mapWidth;
         this.map.height = this.mapHeight;
         this.camera.addChild(this.map);
     }
 
     createPlayer() {
-        this.player = PIXI.Sprite.from(AngelKnight);
+        this.player = new PIXI.Sprite(this.textures.AngelKnight);
         this.player.anchor.set(0.5);
         this.player.scale.set(0.2);
         this.player.x = this.mapWidth / 2;
@@ -193,9 +238,8 @@ class DivineEchoGameCore {
         levelUpContainer.zIndex = 100;
         this.uiContainer.addChild(levelUpContainer);
 
-        // Background overlay
         const background = new PIXI.Graphics();
-        background.beginFill(0x000000, 0.8); // Dark translucent background
+        background.beginFill(0x000000, 0.8);
         background.drawRect(0, 0, this.app.view.width, this.app.view.height);
         background.endFill();
         levelUpContainer.addChild(background);
@@ -203,53 +247,49 @@ class DivineEchoGameCore {
         const skillOptions = [
             {
                 name: 'Holy Circle',
-                image: HolyCircle,
-                level: this.skills.holyCircle.level + 1, // Show the next level for selection
+                image: this.textures.HolyCircle,
+                level: this.skills.holyCircle.level + 1,
                 description: 'Creates a holy circle that deals damage to enemies.',
             },
             {
                 name: 'Saint Aura',
-                image: SaintAura, // Use the appropriate skill image
-                level: this.skills.saintAura.level + 1, // Show the next level for selection
+                image: this.textures.SaintAura,
+                level: this.skills.saintAura.level + 1,
                 description: 'A protective aura that increases damage.',
             },
             {
                 name: "God's Hammer",
-                image: GodsHammer, // Use the appropriate skill image
-                level: this.skills.godsHammer.level + 1, // Show the next level for selection
+                image: this.textures.GodsHammer,
+                level: this.skills.godsHammer.level + 1,
                 description: 'Drops hammers from above, dealing massive damage.',
             },
         ];
 
-        const optionWidth = this.app.view.width / 3; // Divide screen into 3 equal parts
+        const optionWidth = this.app.view.width / 3;
         const optionHeight = this.app.view.height / 2;
 
         skillOptions.forEach((option, index) => {
             const xPosition = index * optionWidth;
 
-            // Create a container for each option
             const optionContainer = new PIXI.Container();
             optionContainer.x = xPosition;
-            optionContainer.y = this.app.view.height / 6; // Move the UI up by reducing y position
+            optionContainer.y = this.app.view.height / 6;
             levelUpContainer.addChild(optionContainer);
 
-            // Option Background
             const optionBg = new PIXI.Graphics();
-            optionBg.beginFill(0x222222); // Dark gray background
+            optionBg.beginFill(0x222222);
             optionBg.drawRect(0, 0, optionWidth - 20, optionHeight);
             optionBg.endFill();
             optionBg.x = 10;
             optionContainer.addChild(optionBg);
 
-            // Skill Image
-            const skillImage = PIXI.Sprite.from(option.image);
+            const skillImage = new PIXI.Sprite(option.image);
             skillImage.anchor.set(0.5);
             skillImage.x = (optionWidth - 20) / 2;
-            skillImage.y = 60; // Adjusted to align better after moving up
-            skillImage.scale.set(0.25); // Set the skill image to half the current size
+            skillImage.y = 60;
+            skillImage.scale.set(0.25);
             optionContainer.addChild(skillImage);
 
-            // Skill Name
             const skillName = new PIXI.Text(`${option.name} Lv${option.level}`, {
                 fontFamily: 'Arial',
                 fontSize: 20,
@@ -258,10 +298,9 @@ class DivineEchoGameCore {
             });
             skillName.anchor.set(0.5);
             skillName.x = (optionWidth - 20) / 2;
-            skillName.y = 140; // Adjusted to align better after moving up
+            skillName.y = 140;
             optionContainer.addChild(skillName);
 
-            // Skill Description
             const skillDescription = new PIXI.Text(option.description, {
                 fontFamily: 'Arial',
                 fontSize: 14,
@@ -272,10 +311,9 @@ class DivineEchoGameCore {
             });
             skillDescription.anchor.set(0.5);
             skillDescription.x = (optionWidth - 20) / 2;
-            skillDescription.y = 180; // Adjusted to align better after moving up
+            skillDescription.y = 180;
             optionContainer.addChild(skillDescription);
 
-            // Select Button
             const selectButton = new PIXI.Text('Select', {
                 fontFamily: 'Arial',
                 fontSize: 18,
@@ -284,7 +322,7 @@ class DivineEchoGameCore {
             });
             selectButton.anchor.set(0.5);
             selectButton.x = (optionWidth - 20) / 2;
-            selectButton.y = 240; // Adjusted to align better after moving up
+            selectButton.y = 240;
             selectButton.interactive = true;
             selectButton.buttonMode = true;
             selectButton.on('pointerdown', () => {
@@ -311,23 +349,22 @@ class DivineEchoGameCore {
     }
 
     updateHolyCircle() {
-        const currentTime = Date.now(); // 현재 시간
+        const currentTime = Date.now();
         if (currentTime - this.lastHolyCircleTime < this.holyCircleCooldown) {
-            return; // 발사 간격이 지나지 않았으면 실행 안 함
+            return;
         }
-        this.lastHolyCircleTime = currentTime; // 마지막 발사 시간 갱신
+        this.lastHolyCircleTime = currentTime;
 
         const level = this.skills.holyCircle.level;
         if (level === 0) return;
 
         const orbsPerLevel = [1, 2, 3, 4, 5];
         const numOrbs = orbsPerLevel[Math.min(level - 1, 4)];
-        const spreadAngle = Math.PI / 12; // 퍼지는 각도
+        const spreadAngle = Math.PI / 12;
 
         let target = null;
         let minDistance = Infinity;
 
-        // 가장 가까운 적 또는 보스 찾기
         [...this.enemies, this.boss].forEach((enemy) => {
             if (!enemy || enemy.health <= 0) return;
 
@@ -347,17 +384,16 @@ class DivineEchoGameCore {
         const dy = target.y - this.player.y;
         const targetAngle = Math.atan2(dy, dx);
 
-        // 타겟을 정확히 맞추는 구슬의 인덱스 설정
         const targetOrbIndex = Math.floor(numOrbs / 2);
 
         for (let i = 0; i < numOrbs; i++) {
-            const angleOffset = (i - targetOrbIndex) * spreadAngle; // 타겟 중심으로 퍼짐
+            const angleOffset = (i - targetOrbIndex) * spreadAngle;
             const angle = targetAngle + angleOffset;
 
             const speed = 5;
             const projectile = new PIXI.Graphics();
             projectile.beginFill(0xffffff);
-            projectile.drawCircle(0, 0, 5); // 구슬 크기
+            projectile.drawCircle(0, 0, 5);
             projectile.endFill();
             projectile.x = this.player.x;
             projectile.y = this.player.y;
@@ -373,29 +409,36 @@ class DivineEchoGameCore {
 
     updateSaintAura() {
         const level = this.skills.saintAura.level;
-        if (level === 0 || this.saintAuraActive) return; // Do nothing if level is 0 or already active
+        if (level === 0 || this.saintAuraActive) return;
 
-        // 레벨별 설정
-        const baseRadius = 100;
-        const levelModifiers = [1, 1.2, 1.2, 1.4, 2]; // 레벨별 범위 증가율
-        const durationOn = level >= 3 ? 3000 : 2000; // 켜지는 시간
-        const durationOff = level >= 3 ? 1500 : 2000; // 꺼지는 시간
+        const baseRadius = 250;
+        const levelModifiers = [1, 1.2, 1.2, 1.4, 2];
+        const durationOn = level >= 3 ? 3000 : 2000;
+        const durationOff = level >= 3 ? 1500 : 2000;
         const radius = baseRadius * levelModifiers[Math.min(level - 1, 4)];
-        const damage = 3; // 오라 데미지
-        const damageInterval = 500; // 데미지 간격(ms)
+        const damage = 10;
+        const damageInterval = 500;
 
-        // SaintAura 이미지를 생성
         const auraSprite = PIXI.Sprite.from(SaintAura);
         auraSprite.anchor.set(0.5);
-        auraSprite.alpha = 0.5; // 투명도 설정
+        auraSprite.alpha = 0.5; //투명도
         auraSprite.width = radius * 2;
         auraSprite.height = radius * 2;
         this.camera.addChild(auraSprite);
 
         this.saintAuraActive = true;
 
-        // 데미지 처리
+        const syncAuraToPlayer = () => {
+            if (auraSprite && this.player) {
+                auraSprite.x = this.player.x;
+                auraSprite.y = this.player.y;
+            }
+        };
+        this.app.ticker.add(syncAuraToPlayer);
+
         const damageIntervalId = setInterval(() => {
+            if (!auraSprite.visible) return;
+
             [...this.enemies, this.boss].forEach((enemy) => {
                 if (!enemy || enemy.health <= 0) return;
 
@@ -403,7 +446,8 @@ class DivineEchoGameCore {
                 const dy = enemy.y - this.player.y;
                 const distance = Math.sqrt(dx * dx + dy * dy);
 
-                if (distance <= radius) {
+                const effectiveRadius = radius * 0.8;
+                if (distance <= effectiveRadius) {
                     enemy.health -= damage;
                     if (enemy.health <= 0) {
                         this.camera.removeChild(enemy);
@@ -413,57 +457,117 @@ class DivineEchoGameCore {
             });
         }, damageInterval);
 
-        // 오라의 애니메이션 및 지속/꺼짐 관리
-        const auraInterval = () => {
-            auraSprite.x = this.player.x;
-            auraSprite.y = this.player.y;
-
-            // 오라를 활성화 (켬)
+        const manageAura = () => {
             auraSprite.visible = true;
             setTimeout(() => {
-                auraSprite.visible = false; // 꺼짐
-                if (this.saintAuraActive) setTimeout(auraInterval, durationOff);
+                auraSprite.visible = false;
+                if (this.saintAuraActive) {
+                    setTimeout(manageAura, durationOff);
+                }
             }, durationOn);
         };
 
-        auraInterval(); // 첫 오라 시작
+        manageAura();
 
-        // 지속시간 동안 오라 활성화
         setTimeout(() => {
             this.camera.removeChild(auraSprite);
             clearInterval(damageIntervalId);
+            this.app.ticker.remove(syncAuraToPlayer);
             this.saintAuraActive = false;
-        }, durationOn + durationOff); // 한 번의 켜짐 + 꺼짐 주기 동안 유지
+        }, durationOn + durationOff);
     }
 
     updateGodsHammer() {
         const level = this.skills.godsHammer.level;
-        if (level === 0) return; // Do nothing if the skill level is 0
+        if (level === 0) return;
 
-        const hammersPerLevel = [1, 2, 3, 3, 2]; // Number of hammers per level
-        const dropDelays = [2000, 2000, 2000, 1000, 1000]; // Drop intervals
-        const isUlt = level === 5;
+        const hammersPerLevel = [1, 2, 3, 3, 2];
+        const dropDelays = [2000, 2000, 2000, 1000, 1000];
+        const hammerSizes = [70, 70, 70, 70, 120];
 
         if (!this.godsHammerInterval) {
             this.godsHammerInterval = setInterval(() => {
                 const numHammers = hammersPerLevel[Math.min(level - 1, 4)];
                 for (let i = 0; i < numHammers; i++) {
-                    const hammer = new PIXI.Graphics();
-                    hammer.beginFill(0xff0000);
-                    hammer.drawRect(0, 0, isUlt ? 50 : 20, isUlt ? 50 : 20);
-                    hammer.endFill();
+                    let target = null;
+                    let minDistance = Infinity;
 
-                    hammer.x = this.player.x + (Math.random() - 0.5) * 300;
-                    hammer.y = this.player.y + (Math.random() - 0.5) * 300;
+                    [...this.enemies, this.boss].forEach((enemy) => {
+                        if (!enemy || enemy.health <= 0) return;
 
+                        const dx = enemy.x - this.player.x;
+                        const dy = enemy.y - this.player.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+
+                        if (distance < minDistance) {
+                            minDistance = distance;
+                            target = enemy;
+                        }
+                    });
+
+                    if (!target) return;
+
+                    const hammer = new PIXI.Sprite(this.textures.GodsHammer);
+                    hammer.anchor.set(0.5);
+                    const size = hammerSizes[Math.min(level - 1, 4)];
+                    hammer.width = size;
+                    hammer.height = size;
+                    hammer.x = target.x;
+                    hammer.y = target.y - 300;
                     this.camera.addChild(hammer);
 
-                    setTimeout(() => {
-                        this.camera.removeChild(hammer);
-                    }, 500); // Hammers stay on screen for a short time
+                    const dropSpeed = 10;
+
+                    const dropTicker = () => {
+                        if (hammer.y < target.y) {
+                            hammer.y += dropSpeed;
+                        } else {
+                            this.createExplosion(target.x, target.y);
+                            this.camera.removeChild(hammer);
+                            this.dealHammerDamage(target.x, target.y, size / 2);
+                            this.app.ticker.remove(dropTicker);
+                        }
+                    };
+
+                    hammer.dropTicker = dropTicker;
+                    this.app.ticker.add(dropTicker);
                 }
             }, dropDelays[Math.min(level - 1, 4)]);
         }
+    }
+
+    createExplosion(x, y) {
+        const explosion = new PIXI.Sprite(this.textures.Explosion);
+        explosion.anchor.set(0.5);
+        explosion.x = x;
+        explosion.y = y;
+        explosion.width = 150;
+        explosion.height = 150;
+        this.camera.addChild(explosion);
+
+        setTimeout(() => {
+            this.camera.removeChild(explosion);
+        }, 500);
+    }
+
+    dealHammerDamage(x, y, radius) {
+        const damage = 30;
+
+        [...this.enemies, this.boss].forEach((enemy) => {
+            if (!enemy || enemy.health <= 0) return;
+
+            const dx = enemy.x - x;
+            const dy = enemy.y - y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance <= radius) {
+                enemy.health -= damage;
+                if (enemy.health <= 0) {
+                    this.camera.removeChild(enemy);
+                    this.enemies = this.enemies.filter((e) => e !== enemy);
+                }
+            }
+        });
     }
 
     startGameLoop() {
@@ -475,7 +579,7 @@ class DivineEchoGameCore {
                 this.updateEnemies();
                 this.updateUI();
                 this.checkLevelUp();
-                this.updateSkills(); // Call skill updates in the game loop
+                this.updateSkills();
             }
         });
     }
@@ -516,7 +620,6 @@ class DivineEchoGameCore {
 
         const speed = this.playerSpeed;
 
-        // 아래쪽 제한값에 캐릭터 높이만큼 추가
         const adjustedMapHeight = this.mapHeight - this.app.view.height / 2 + this.player.height / 2;
 
         this.player.x = Math.max(0, Math.min(this.mapWidth, this.player.x + dx * speed));
@@ -536,11 +639,11 @@ class DivineEchoGameCore {
             clearInterval(this.enemySpawnIntervalId);
         }
 
-        const spawnInterval = 2000 / Math.pow(1.25, this.stage - 1); // 스테이지별 스폰 간격
-        const enemiesPerSpawn = 3 + this.stage - 1; // 스테이지별 Devil 수 증가
+        const spawnInterval = 2000 / Math.pow(1.25, this.stage - 1);
+        const enemiesPerSpawn = 3 + this.stage - 1;
 
         this.enemySpawnIntervalId = setInterval(() => {
-            if (this.stageComplete) return; // 스테이지가 끝난 경우 스폰 중단
+            if (this.stageComplete) return;
 
             for (let i = 0; i < enemiesPerSpawn; i++) {
                 const enemy = PIXI.Sprite.from(Devil);
@@ -548,8 +651,8 @@ class DivineEchoGameCore {
                 enemy.scale.set(0.1);
                 enemy.x = Math.random() * this.mapWidth;
                 enemy.y = Math.random() * this.mapHeight;
-                enemy.health = Math.floor(10 * Math.pow(1.25, this.stage - 1)); // 체력 정수화
-                enemy.damage = Math.floor(5 * Math.pow(1.25, this.stage - 1)); // 데미지 정수화
+                enemy.health = Math.floor(10 * Math.pow(1.25, this.stage - 1));
+                enemy.damage = Math.floor(5 * Math.pow(1.25, this.stage - 1));
 
                 this.camera.addChild(enemy);
                 this.enemies.push(enemy);
@@ -566,8 +669,8 @@ class DivineEchoGameCore {
         this.boss.scale.set(0.3);
         this.boss.x = Math.random() * this.mapWidth;
         this.boss.y = Math.random() * this.mapHeight;
-        this.boss.health = 300 * Math.pow(1.25, this.stage - 1); // 보스 체력
-        this.boss.damage = 15 * Math.pow(1.25, this.stage - 1); // 보스 데미지
+        this.boss.health = 300 * Math.pow(1.25, this.stage - 1);
+        this.boss.damage = 15 * Math.pow(1.25, this.stage - 1);
 
         this.camera.addChild(this.boss);
         this.isBossSpawned = true;
@@ -598,8 +701,8 @@ class DivineEchoGameCore {
             enemy.y += (dy / distance) * this.baseMonsterSpeed;
 
             if (distance < 20 && !this.isInvincible) {
-                this.health -= enemy.damage; // Devil의 데미지 적용
-                this.startInvincibility(); // 무적 상태 시작
+                this.health -= enemy.damage;
+                this.startInvincibility();
                 if (this.health <= 0) {
                     this.gameOver();
                 }
@@ -612,8 +715,8 @@ class DivineEchoGameCore {
             const distance = Math.sqrt(dx * dx + dy * dy);
 
             if (distance < 30 && !this.isInvincible) {
-                this.health -= this.boss.damage; // 보스 데미지 적용
-                this.startInvincibility(); // 무적 상태 시작
+                this.health -= this.boss.damage;
+                this.startInvincibility();
                 if (this.health <= 0) {
                     this.gameOver();
                 }
@@ -621,11 +724,10 @@ class DivineEchoGameCore {
         }
     }
 
-    // 무적 상태 시작
     startInvincibility() {
-        this.isInvincible = true; // 무적 상태 활성화
+        this.isInvincible = true;
         setTimeout(() => {
-            this.isInvincible = false; // 1초 후 무적 상태 해제
+            this.isInvincible = false;
         }, 1000);
     }
 
@@ -636,9 +738,9 @@ class DivineEchoGameCore {
 
         this.holyCircleInterval = setInterval(() => {
             if (this.skills.holyCircle.level > 0) {
-                this.updateHolyCircle(); // Holy Circle 발사
+                this.updateHolyCircle();
             }
-        }, this.holyCircleCooldown); // Holy Circle 발사 간격에 따라 호출
+        }, this.holyCircleCooldown);
     }
 
     updateProjectiles() {
@@ -653,7 +755,6 @@ class DivineEchoGameCore {
                 return false;
             }
 
-            // 적과 충돌 감지
             this.enemies.forEach((enemy) => {
                 const dx = sprite.x - enemy.x;
                 const dy = sprite.y - enemy.y;
@@ -665,24 +766,22 @@ class DivineEchoGameCore {
                     if (enemy.health <= 0) {
                         this.camera.removeChild(enemy);
                         this.enemies = this.enemies.filter((e) => e !== enemy);
-                        this.experience += 10; // 경험치 증가
-                        this.checkLevelUp(); // 경험치 증가 후 레벨업 확인
+                        this.experience += 10;
+                        this.checkLevelUp();
                     }
                     return false;
                 }
             });
 
-            // 보스와 충돌 감지
             if (this.boss && this.boss.health > 0) {
                 const dx = sprite.x - this.boss.x;
                 const dy = sprite.y - this.boss.y;
                 const distance = Math.sqrt(dx * dx + dy * dy);
 
                 if (distance < 30) {
-                    this.boss.health -= 10; // 보스 체력 감소
-                    this.camera.removeChild(sprite); // 발사체 제거
+                    this.boss.health -= 10;
+                    this.camera.removeChild(sprite);
 
-                    // 보스 피격 모션 (깜빡임 효과)
                     this.boss.alpha = 0.5;
                     setTimeout(() => {
                         if (this.boss) this.boss.alpha = 1;
@@ -690,8 +789,8 @@ class DivineEchoGameCore {
 
                     if (this.boss.health <= 0) {
                         this.camera.removeChild(this.boss);
-                        this.boss = null; // 보스 제거
-                        this.isBossSpawned = false; // 보스 상태 초기화
+                        this.boss = null;
+                        this.isBossSpawned = false;
                     }
                     return false;
                 }
