@@ -57,6 +57,8 @@ class DivineEchoGameCore {
         this.experienceBar = null;
         this.experienceText = null;
         this.levelText = null;
+        this.lastHolyCircleTime = 0; // 마지막 Holy Circle 발사 시점
+        this.holyCircleCooldown = 1000; // 발사 간격 (ms)
 
         this.init();
     }
@@ -309,62 +311,129 @@ class DivineEchoGameCore {
     }
 
     updateHolyCircle() {
+        const currentTime = Date.now(); // 현재 시간
+        if (currentTime - this.lastHolyCircleTime < this.holyCircleCooldown) {
+            return; // 발사 간격이 지나지 않았으면 실행 안 함
+        }
+        this.lastHolyCircleTime = currentTime; // 마지막 발사 시간 갱신
+
         const level = this.skills.holyCircle.level;
-        if (level === 0) return; // Do nothing if the skill level is 0
+        if (level === 0) return;
 
         const orbsPerLevel = [1, 2, 3, 4, 5];
         const numOrbs = orbsPerLevel[Math.min(level - 1, 4)];
-        const isUlt = level === 5;
+        const spreadAngle = Math.PI / 12; // 퍼지는 각도
 
-        const directions = isUlt
-            ? [0, Math.PI / 6, -Math.PI / 6] // Three directions for Ult
-            : [0]; // Single direction for non-Ult
+        let target = null;
+        let minDistance = Infinity;
 
-        directions.forEach((angleOffset) => {
-            for (let i = 0; i < numOrbs; i++) {
-                const angle = (i / numOrbs) * (2 * Math.PI) + angleOffset;
-                const speed = 5;
-                const projectile = new PIXI.Graphics();
-                projectile.beginFill(0xffffff);
-                projectile.drawCircle(0, 0, 10);
-                projectile.endFill();
-                projectile.x = this.player.x;
-                projectile.y = this.player.y;
+        // 가장 가까운 적 또는 보스 찾기
+        [...this.enemies, this.boss].forEach((enemy) => {
+            if (!enemy || enemy.health <= 0) return;
 
-                this.camera.addChild(projectile);
-                this.projectiles.push({
-                    sprite: projectile,
-                    speedX: speed * Math.cos(angle),
-                    speedY: speed * Math.sin(angle),
-                });
+            const dx = enemy.x - this.player.x;
+            const dy = enemy.y - this.player.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < minDistance) {
+                minDistance = distance;
+                target = enemy;
             }
         });
+
+        if (!target) return;
+
+        const dx = target.x - this.player.x;
+        const dy = target.y - this.player.y;
+        const targetAngle = Math.atan2(dy, dx);
+
+        // 타겟을 정확히 맞추는 구슬의 인덱스 설정
+        const targetOrbIndex = Math.floor(numOrbs / 2);
+
+        for (let i = 0; i < numOrbs; i++) {
+            const angleOffset = (i - targetOrbIndex) * spreadAngle; // 타겟 중심으로 퍼짐
+            const angle = targetAngle + angleOffset;
+
+            const speed = 5;
+            const projectile = new PIXI.Graphics();
+            projectile.beginFill(0xffffff);
+            projectile.drawCircle(0, 0, 5); // 구슬 크기
+            projectile.endFill();
+            projectile.x = this.player.x;
+            projectile.y = this.player.y;
+
+            this.camera.addChild(projectile);
+            this.projectiles.push({
+                sprite: projectile,
+                speedX: speed * Math.cos(angle),
+                speedY: speed * Math.sin(angle),
+            });
+        }
     }
 
     updateSaintAura() {
         const level = this.skills.saintAura.level;
         if (level === 0 || this.saintAuraActive) return; // Do nothing if level is 0 or already active
 
-        const auraDurations = [5000, 7000, 10000, 12000, 15000];
-        const auraRadii = [100, 150, 150, 200, 400]; // Radii increase at specific levels
+        // 레벨별 설정
+        const baseRadius = 100;
+        const levelModifiers = [1, 1.2, 1.2, 1.4, 2]; // 레벨별 범위 증가율
+        const durationOn = level >= 3 ? 3000 : 2000; // 켜지는 시간
+        const durationOff = level >= 3 ? 1500 : 2000; // 꺼지는 시간
+        const radius = baseRadius * levelModifiers[Math.min(level - 1, 4)];
+        const damage = 3; // 오라 데미지
+        const damageInterval = 500; // 데미지 간격(ms)
 
-        const duration = auraDurations[Math.min(level - 1, 4)];
-        const radius = auraRadii[Math.min(level - 1, 4)];
-
-        const aura = new PIXI.Graphics();
-        aura.beginFill(0x00ff00, 0.3);
-        aura.drawCircle(0, 0, radius);
-        aura.endFill();
-        aura.x = this.player.x;
-        aura.y = this.player.y;
-        this.camera.addChild(aura);
+        // SaintAura 이미지를 생성
+        const auraSprite = PIXI.Sprite.from(SaintAura);
+        auraSprite.anchor.set(0.5);
+        auraSprite.alpha = 0.5; // 투명도 설정
+        auraSprite.width = radius * 2;
+        auraSprite.height = radius * 2;
+        this.camera.addChild(auraSprite);
 
         this.saintAuraActive = true;
 
+        // 데미지 처리
+        const damageIntervalId = setInterval(() => {
+            [...this.enemies, this.boss].forEach((enemy) => {
+                if (!enemy || enemy.health <= 0) return;
+
+                const dx = enemy.x - this.player.x;
+                const dy = enemy.y - this.player.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance <= radius) {
+                    enemy.health -= damage;
+                    if (enemy.health <= 0) {
+                        this.camera.removeChild(enemy);
+                        this.enemies = this.enemies.filter((e) => e !== enemy);
+                    }
+                }
+            });
+        }, damageInterval);
+
+        // 오라의 애니메이션 및 지속/꺼짐 관리
+        const auraInterval = () => {
+            auraSprite.x = this.player.x;
+            auraSprite.y = this.player.y;
+
+            // 오라를 활성화 (켬)
+            auraSprite.visible = true;
+            setTimeout(() => {
+                auraSprite.visible = false; // 꺼짐
+                if (this.saintAuraActive) setTimeout(auraInterval, durationOff);
+            }, durationOn);
+        };
+
+        auraInterval(); // 첫 오라 시작
+
+        // 지속시간 동안 오라 활성화
         setTimeout(() => {
-            this.camera.removeChild(aura);
+            this.camera.removeChild(auraSprite);
+            clearInterval(damageIntervalId);
             this.saintAuraActive = false;
-        }, duration);
+        }, durationOn + durationOff); // 한 번의 켜짐 + 꺼짐 주기 동안 유지
     }
 
     updateGodsHammer() {
@@ -559,46 +628,17 @@ class DivineEchoGameCore {
             this.isInvincible = false; // 1초 후 무적 상태 해제
         }, 1000);
     }
+
     startPlayerAttack() {
-        setInterval(() => {
-            if (this.enemies.length === 0 && !this.boss) return;
+        if (this.holyCircleInterval) {
+            clearInterval(this.holyCircleInterval);
+        }
 
-            let target = null;
-            let minDistance = Infinity;
-
-            [...this.enemies, this.boss].forEach((enemy) => {
-                if (!enemy || enemy.health <= 0) return;
-
-                const dx = enemy.x - this.player.x;
-                const dy = enemy.y - this.player.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    target = enemy;
-                }
-            });
-
-            if (!target) return;
-
-            const dx = target.x - this.player.x;
-            const dy = target.y - this.player.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-
-            const projectile = new PIXI.Graphics();
-            projectile.beginFill(0xffffff);
-            projectile.drawCircle(0, 0, 5);
-            projectile.endFill();
-            projectile.x = this.player.x;
-            projectile.y = this.player.y;
-
-            this.camera.addChild(projectile);
-            this.projectiles.push({
-                sprite: projectile,
-                speedX: (dx / distance) * 5,
-                speedY: (dy / distance) * 5,
-            });
-        }, 500);
+        this.holyCircleInterval = setInterval(() => {
+            if (this.skills.holyCircle.level > 0) {
+                this.updateHolyCircle(); // Holy Circle 발사
+            }
+        }, this.holyCircleCooldown); // Holy Circle 발사 간격에 따라 호출
     }
 
     updateProjectiles() {
