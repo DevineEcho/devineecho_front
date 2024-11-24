@@ -60,6 +60,7 @@ class DivineEchoGameCore {
         this.levelText = null;
         this.lastHolyCircleTime = 0;
         this.holyCircleCooldown = 1000;
+        this.baseHammerDamage = 20;
 
         this.textures = {};
 
@@ -103,18 +104,19 @@ class DivineEchoGameCore {
     }
 
     init() {
-        this.createMap();
-        this.createPlayer();
-        this.createUI();
-        this.spawnEnemies();
-        this.startPlayerAttack();
-        this.startTimer();
-        this.startGameLoop();
+        this.showStageText(`STAGE ${this.stage}`, () => {
+            this.createMap();
+            this.createPlayer();
+            this.createUI();
+            this.spawnEnemies();
+            this.startPlayerAttack();
+            this.startTimer();
+            this.startGameLoop();
 
-        window.addEventListener('keydown', (e) => (this.keys[e.key] = true));
-        window.addEventListener('keyup', (e) => (this.keys[e.key] = false));
+            window.addEventListener('keydown', (e) => (this.keys[e.key] = true));
+            window.addEventListener('keyup', (e) => (this.keys[e.key] = false));
+        });
     }
-
     createMap() {
         const mapImages = [
             this.textures.map1,
@@ -416,12 +418,13 @@ class DivineEchoGameCore {
         const durationOn = level >= 3 ? 3000 : 2000;
         const durationOff = level >= 3 ? 1500 : 2000;
         const radius = baseRadius * levelModifiers[Math.min(level - 1, 4)];
-        const damage = 10;
+        const damagePerLevel = [3, 5, 7, 10, 10];
+        const damage = damagePerLevel[Math.min(level - 1, 4)];
         const damageInterval = 500;
 
         const auraSprite = PIXI.Sprite.from(SaintAura);
         auraSprite.anchor.set(0.5);
-        auraSprite.alpha = 0.5; //투명도
+        auraSprite.alpha = 0.5;
         auraSprite.width = radius * 2;
         auraSprite.height = radius * 2;
         this.camera.addChild(auraSprite);
@@ -449,6 +452,12 @@ class DivineEchoGameCore {
                 const effectiveRadius = radius * 0.8;
                 if (distance <= effectiveRadius) {
                     enemy.health -= damage;
+
+                    enemy.alpha = 0.5;
+                    setTimeout(() => {
+                        if (enemy.health > 0) enemy.alpha = 1;
+                    }, 200);
+
                     if (enemy.health <= 0) {
                         this.camera.removeChild(enemy);
                         this.enemies = this.enemies.filter((e) => e !== enemy);
@@ -481,77 +490,114 @@ class DivineEchoGameCore {
         const level = this.skills.godsHammer.level;
         if (level === 0) return;
 
-        const hammersPerLevel = [1, 2, 3, 3, 2];
-        const dropDelays = [2000, 2000, 2000, 1000, 1000];
-        const hammerSizes = [70, 70, 70, 70, 120];
-
-        if (!this.godsHammerInterval) {
-            this.godsHammerInterval = setInterval(() => {
-                const numHammers = hammersPerLevel[Math.min(level - 1, 4)];
-                for (let i = 0; i < numHammers; i++) {
-                    let target = null;
-                    let minDistance = Infinity;
-
-                    [...this.enemies, this.boss].forEach((enemy) => {
-                        if (!enemy || enemy.health <= 0) return;
-
-                        const dx = enemy.x - this.player.x;
-                        const dy = enemy.y - this.player.y;
-                        const distance = Math.sqrt(dx * dx + dy * dy);
-
-                        if (distance < minDistance) {
-                            minDistance = distance;
-                            target = enemy;
-                        }
-                    });
-
-                    if (!target) return;
-
-                    const hammer = new PIXI.Sprite(this.textures.GodsHammer);
-                    hammer.anchor.set(0.5);
-                    const size = hammerSizes[Math.min(level - 1, 4)];
-                    hammer.width = size;
-                    hammer.height = size;
-                    hammer.x = target.x;
-                    hammer.y = target.y - 300;
-                    this.camera.addChild(hammer);
-
-                    const dropSpeed = 10;
-
-                    const dropTicker = () => {
-                        if (hammer.y < target.y) {
-                            hammer.y += dropSpeed;
-                        } else {
-                            this.createExplosion(target.x, target.y);
-                            this.camera.removeChild(hammer);
-                            this.dealHammerDamage(target.x, target.y, size / 2);
-                            this.app.ticker.remove(dropTicker);
-                        }
-                    };
-
-                    hammer.dropTicker = dropTicker;
-                    this.app.ticker.add(dropTicker);
-                }
-            }, dropDelays[Math.min(level - 1, 4)]);
+        if (this.godsHammerInterval) {
+            return;
         }
+
+        this.godsHammerInterval = true;
+
+        let numHammers = level;
+        let hammerDropDelay = 4000;
+        let hammerSize = 70;
+        let explosionScaleFactor = 1;
+
+        if (level === 1) {
+            hammerSize = 70;
+            explosionScaleFactor = 1;
+        } else if (level === 2) {
+            hammerSize = 70;
+            explosionScaleFactor = 1.2;
+        } else if (level === 3) {
+            hammerSize = 70;
+            explosionScaleFactor = 1.4;
+        } else if (level === 4) {
+            hammerSize = 70;
+            explosionScaleFactor = 1.8;
+        } else if (level === 5) {
+            numHammers = 2;
+            hammerSize = 70 * 3;
+            explosionScaleFactor = 4;
+        }
+
+        this.targetedEnemies = new Set();
+
+        for (let i = 0; i < numHammers; i++) {
+            setTimeout(() => {
+                let target = null;
+                let minDistance = Infinity;
+
+                [...this.enemies, this.boss].forEach((enemy) => {
+                    if (!enemy || enemy.health <= 0 || this.targetedEnemies.has(enemy)) return;
+
+                    const dx = enemy.x - this.player.x;
+                    const dy = enemy.y - this.player.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        target = enemy;
+                    }
+                });
+
+                if (!target) return;
+
+                this.targetedEnemies.add(target);
+
+                const hammer = new PIXI.Sprite(this.textures.GodsHammer);
+                hammer.anchor.set(0.5);
+                hammer.width = hammerSize;
+                hammer.height = hammerSize;
+                hammer.x = target.x;
+                hammer.y = target.y - 300;
+                this.camera.addChild(hammer);
+
+                const dropSpeed = 10;
+
+                const dropTicker = () => {
+                    if (hammer.y < target.y) {
+                        hammer.y += dropSpeed;
+                    } else {
+                        this.createExplosion(target.x, target.y, explosionScaleFactor);
+                        this.camera.removeChild(hammer);
+                        this.dealHammerDamage(target.x, target.y, hammerSize / 2, level);
+                        this.app.ticker.remove(dropTicker);
+                    }
+                };
+
+                this.app.ticker.add(dropTicker);
+            }, i * 100);
+        }
+
+        setTimeout(() => {
+            this.godsHammerInterval = null;
+            this.targetedEnemies.clear();
+        }, hammerDropDelay);
     }
 
-    createExplosion(x, y) {
+    createExplosion(x, y, explosionScaleFactor) {
         const explosion = new PIXI.Sprite(this.textures.Explosion);
         explosion.anchor.set(0.5);
         explosion.x = x;
         explosion.y = y;
-        explosion.width = 150;
-        explosion.height = 150;
+
+        const explosionScale = 150 * explosionScaleFactor;
+        explosion.width = explosionScale;
+        explosion.height = explosionScale;
+
         this.camera.addChild(explosion);
+
+        const explosionDamageInterval = setInterval(() => {
+            this.dealExplosionDamage(x, y, explosionScale / 2);
+        }, 100);
 
         setTimeout(() => {
             this.camera.removeChild(explosion);
+            clearInterval(explosionDamageInterval);
         }, 500);
     }
 
-    dealHammerDamage(x, y, radius) {
-        const damage = 30;
+    dealHammerDamage(x, y, radius, level) {
+        const damage = this.baseHammerDamage + (level - 1) * 5;
 
         [...this.enemies, this.boss].forEach((enemy) => {
             if (!enemy || enemy.health <= 0) return;
@@ -562,6 +608,40 @@ class DivineEchoGameCore {
 
             if (distance <= radius) {
                 enemy.health -= damage;
+
+                enemy.alpha = 0.5;
+                setTimeout(() => {
+                    if (enemy.health > 0) enemy.alpha = 1;
+                }, 200);
+
+                if (enemy.health <= 0) {
+                    this.camera.removeChild(enemy);
+                    this.enemies = this.enemies.filter((e) => e !== enemy);
+
+                    this.targetedEnemies.delete(enemy);
+                }
+            }
+        });
+    }
+
+    dealExplosionDamage(x, y, radius) {
+        const explosionDamage = 10;
+
+        [...this.enemies, this.boss].forEach((enemy) => {
+            if (!enemy || enemy.health <= 0) return;
+
+            const dx = enemy.x - x;
+            const dy = enemy.y - y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance <= radius) {
+                enemy.health -= explosionDamage;
+
+                enemy.alpha = 0.5;
+                setTimeout(() => {
+                    if (enemy.health > 0) enemy.alpha = 1;
+                }, 200);
+
                 if (enemy.health <= 0) {
                     this.camera.removeChild(enemy);
                     this.enemies = this.enemies.filter((e) => e !== enemy);
@@ -813,12 +893,35 @@ class DivineEchoGameCore {
         }
 
         this.stage += 1;
-        if (this.player) this.camera.removeChild(this.player);
-        this.createPlayer();
-        this.createMap();
 
-        this.spawnEnemies();
-        this.startTimer();
+        this.showStageText(`STAGE ${this.stage}`, () => {
+            if (this.player) this.camera.removeChild(this.player);
+            this.createPlayer();
+            this.createMap();
+            this.spawnEnemies();
+            this.startTimer();
+        });
+    }
+
+    showStageText(text, callback) {
+        const stageText = new PIXI.Text(text, {
+            fontFamily: 'Arial',
+            fontSize: 80,
+            fill: 0xffffff,
+            align: 'center',
+            stroke: 0x000000,
+            strokeThickness: 6,
+        });
+        stageText.anchor.set(0.5);
+        stageText.x = this.app.view.width / 2;
+        stageText.y = this.app.view.height / 2 - 80;
+
+        this.uiContainer.addChild(stageText);
+
+        setTimeout(() => {
+            this.uiContainer.removeChild(stageText);
+            if (callback) callback();
+        }, 3000);
     }
 
     gameOver() {
