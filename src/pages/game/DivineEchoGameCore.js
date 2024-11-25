@@ -905,7 +905,7 @@ class DivineEchoGameCore {
 
     showStageText(text, callback) {
         const stageText = new PIXI.Text(text, {
-            fontFamily: 'Arial',
+            fontFamily: 'ChosunCentennial',
             fontSize: 80,
             fill: 0xffffff,
             align: 'center',
@@ -914,7 +914,7 @@ class DivineEchoGameCore {
         });
         stageText.anchor.set(0.5);
         stageText.x = this.app.view.width / 2;
-        stageText.y = this.app.view.height / 2 - 80;
+        stageText.y = this.app.view.height / 2 - 100;
 
         this.uiContainer.addChild(stageText);
 
