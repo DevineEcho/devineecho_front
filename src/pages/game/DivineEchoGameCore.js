@@ -61,6 +61,9 @@ class DivineEchoGameCore {
         this.lastHolyCircleTime = 0;
         this.holyCircleCooldown = 1000;
         this.baseHammerDamage = 20;
+        this.enemyGrowthLevel = 0;
+        this.enemySpeedBoostLevel = 0;
+        this.enemySpawnBoostLevel = 0;
 
         this.textures = {};
 
@@ -143,6 +146,9 @@ class DivineEchoGameCore {
         this.player.scale.set(0.2);
         this.player.x = this.mapWidth / 2;
         this.player.y = this.mapHeight / 2 - 100;
+        this.player.zIndex = 10;
+        this.camera.sortChildren();
+
         this.camera.addChild(this.player);
     }
 
@@ -226,114 +232,139 @@ class DivineEchoGameCore {
     }
 
     pauseGame() {
+        if (this.isPaused) return;
+
         this.isPaused = true;
         this.app.ticker.stop();
+
+        if (this.timerIntervalId) {
+            clearInterval(this.timerIntervalId);
+            this.timerIntervalId = null;
+        }
     }
 
     resumeGame() {
+        if (!this.isPaused) return;
+
         this.isPaused = false;
         this.app.ticker.start();
+
+        if (!this.timerIntervalId) {
+            this.startTimer();
+        }
     }
 
-    showLevelUpUI() {
-        const levelUpContainer = new PIXI.Container();
-        levelUpContainer.zIndex = 100;
-        this.uiContainer.addChild(levelUpContainer);
+    showEnemyLevelUpUI() {
+        this.pauseGame();
+        const enemyLevelUpContainer = new PIXI.Container();
+        enemyLevelUpContainer.zIndex = 100;
+        this.uiContainer.addChild(enemyLevelUpContainer);
 
         const background = new PIXI.Graphics();
-        background.beginFill(0x000000, 0.8);
+        background.beginFill(0x8b0000, 0.8);
         background.drawRect(0, 0, this.app.view.width, this.app.view.height);
         background.endFill();
-        levelUpContainer.addChild(background);
+        enemyLevelUpContainer.addChild(background);
 
-        const skillOptions = [
+        const enemyOptions = [
             {
-                name: 'Holy Circle',
-                image: this.textures.HolyCircle,
-                level: this.skills.holyCircle.level + 1,
-                description: 'Creates a holy circle that deals damage to enemies.',
+                name: '악마는 성장중',
+                level: this.enemySkills.sizeLevel + 1,
+                description: '소환되는 적(보스 제외)의 크기가 10% 상승합니다.',
+                maxed: this.enemySkills.sizeLevel >= 5,
+                levelUpEffect: () => this.increaseEnemySize(0.1),
             },
             {
-                name: 'Saint Aura',
-                image: this.textures.SaintAura,
-                level: this.skills.saintAura.level + 1,
-                description: 'A protective aura that increases damage.',
+                name: '부스터',
+                level: this.enemySkills.speedLevel + 1,
+                description: '소환되는 적(보스 제외)의 이동속도가 20% 상승합니다.',
+                maxed: this.enemySkills.speedLevel >= 5,
+                levelUpEffect: () => this.increaseEnemySpeed(0.2),
             },
             {
-                name: "God's Hammer",
-                image: this.textures.GodsHammer,
-                level: this.skills.godsHammer.level + 1,
-                description: 'Drops hammers from above, dealing massive damage.',
+                name: '악마공장 가동',
+                level: this.enemySkills.spawnRateLevel + 1,
+                description: '적(보스 제외)의 스폰이 30% 빨라집니다.',
+                maxed: this.enemySkills.spawnRateLevel >= 5,
+                levelUpEffect: () => this.increaseEnemySpawnRate(0.3),
             },
         ];
 
         const optionWidth = this.app.view.width / 3;
         const optionHeight = this.app.view.height / 2;
 
-        skillOptions.forEach((option, index) => {
+        enemyOptions.forEach((option, index) => {
             const xPosition = index * optionWidth;
 
             const optionContainer = new PIXI.Container();
             optionContainer.x = xPosition;
             optionContainer.y = this.app.view.height / 6;
-            levelUpContainer.addChild(optionContainer);
+            enemyLevelUpContainer.addChild(optionContainer);
 
             const optionBg = new PIXI.Graphics();
-            optionBg.beginFill(0x222222);
+            optionBg.beginFill(0x550000);
             optionBg.drawRect(0, 0, optionWidth - 20, optionHeight);
             optionBg.endFill();
             optionBg.x = 10;
             optionContainer.addChild(optionBg);
 
-            const skillImage = new PIXI.Sprite(option.image);
-            skillImage.anchor.set(0.5);
-            skillImage.x = (optionWidth - 20) / 2;
-            skillImage.y = 60;
-            skillImage.scale.set(0.25);
-            optionContainer.addChild(skillImage);
-
-            const skillName = new PIXI.Text(`${option.name} Lv${option.level}`, {
-                fontFamily: 'Arial',
-                fontSize: 20,
-                fill: 0xffffff,
-                align: 'center',
-            });
+            const skillName = new PIXI.Text(
+                option.maxed ? `${option.name} (Max)` : `${option.name} Lv${option.level}`,
+                {
+                    fontFamily: 'Arial',
+                    fontSize: 20,
+                    fill: 0xffffff,
+                    align: 'center',
+                }
+            );
             skillName.anchor.set(0.5);
             skillName.x = (optionWidth - 20) / 2;
             skillName.y = 140;
             optionContainer.addChild(skillName);
 
-            const skillDescription = new PIXI.Text(option.description, {
-                fontFamily: 'Arial',
-                fontSize: 14,
-                fill: 0xffffff,
-                wordWrap: true,
-                wordWrapWidth: optionWidth - 40,
-                align: 'center',
-            });
+            const skillDescription = new PIXI.Text(
+                option.maxed ? `${option.name}은 최대 레벨에 도달하였습니다.` : option.description,
+                {
+                    fontFamily: 'Arial',
+                    fontSize: 14,
+                    fill: 0xffffff,
+                    wordWrap: true,
+                    wordWrapWidth: optionWidth - 40,
+                    align: 'center',
+                }
+            );
             skillDescription.anchor.set(0.5);
             skillDescription.x = (optionWidth - 20) / 2;
             skillDescription.y = 180;
             optionContainer.addChild(skillDescription);
 
-            const selectButton = new PIXI.Text('Select', {
-                fontFamily: 'Arial',
-                fontSize: 18,
-                fill: 0x00ff00,
-                align: 'center',
-            });
-            selectButton.anchor.set(0.5);
-            selectButton.x = (optionWidth - 20) / 2;
-            selectButton.y = 240;
-            selectButton.interactive = true;
-            selectButton.buttonMode = true;
-            selectButton.on('pointerdown', () => {
-                this.upgradeSkill(index);
-                this.uiContainer.removeChild(levelUpContainer);
-                this.resumeGame();
-            });
-            optionContainer.addChild(selectButton);
+            if (!option.maxed) {
+                const selectButton = new PIXI.Text('Select', {
+                    fontFamily: 'Arial',
+                    fontSize: 18,
+                    fill: 0xff0000,
+                    align: 'center',
+                });
+                selectButton.anchor.set(0.5);
+                selectButton.x = (optionWidth - 20) / 2;
+                selectButton.y = 240;
+                selectButton.interactive = true;
+                selectButton.buttonMode = true;
+
+                selectButton.on('pointerdown', () => {
+                    console.log(`Selected ${option.name}`);
+                    option.levelUpEffect();
+                    this.uiContainer.removeChild(enemyLevelUpContainer);
+
+                    console.log('Resuming game');
+                    this.resumeGame();
+                });
+
+                optionContainer.addChild(selectButton);
+            }
         });
+
+        console.log('Enemy level up UI shown');
     }
 
     upgradeSkill(index) {
@@ -351,6 +382,9 @@ class DivineEchoGameCore {
     }
 
     updateHolyCircle() {
+        // 플레이어가 유효하지 않은 경우 함수를 종료
+        if (!this.player) return;
+
         const currentTime = Date.now();
         if (currentTime - this.lastHolyCircleTime < this.holyCircleCooldown) {
             return;
@@ -487,6 +521,8 @@ class DivineEchoGameCore {
     }
 
     updateGodsHammer() {
+        if (!this.player) return;
+
         const level = this.skills.godsHammer.level;
         if (level === 0) return;
 
@@ -523,6 +559,8 @@ class DivineEchoGameCore {
 
         for (let i = 0; i < numHammers; i++) {
             setTimeout(() => {
+                if (!this.enemies || this.enemies.length === 0) return;
+
                 let target = null;
                 let minDistance = Infinity;
 
@@ -665,9 +703,12 @@ class DivineEchoGameCore {
     }
 
     startTimer() {
-        const interval = setInterval(() => {
+        if (this.timerIntervalId) return;
+
+        this.timerIntervalId = setInterval(() => {
             if (this.stageComplete) {
-                clearInterval(interval);
+                clearInterval(this.timerIntervalId);
+                this.timerIntervalId = null;
                 return;
             }
             this.timer -= 1;
@@ -679,12 +720,15 @@ class DivineEchoGameCore {
 
             if (this.timer <= 0) {
                 this.resetStage();
-                clearInterval(interval);
+                clearInterval(this.timerIntervalId);
+                this.timerIntervalId = null;
             }
         }, 1000);
     }
 
     movePlayer() {
+        if (!this.player) return;
+
         let dx = 0;
         let dy = 0;
 
@@ -707,11 +751,15 @@ class DivineEchoGameCore {
     }
 
     moveCamera() {
+        if (!this.player) return;
+
         const halfWidth = this.app.view.width / 2;
         const halfHeight = this.app.view.height / 2;
 
-        this.camera.x = Math.min(0, Math.max(halfWidth - this.player.x, this.app.view.width - this.mapWidth));
-        this.camera.y = Math.min(0, Math.max(halfHeight - this.player.y, this.app.view.height - this.mapHeight));
+        if (this.player) {
+            this.camera.x = Math.min(0, Math.max(halfWidth - this.player.x, this.app.view.width - this.mapWidth));
+            this.camera.y = Math.min(0, Math.max(halfHeight - this.player.y, this.app.view.height - this.mapHeight));
+        }
     }
 
     spawnEnemies() {
@@ -719,20 +767,23 @@ class DivineEchoGameCore {
             clearInterval(this.enemySpawnIntervalId);
         }
 
-        const spawnInterval = 2000 / Math.pow(1.25, this.stage - 1);
+        const baseSpawnInterval = 2000;
+        const spawnInterval =
+            (baseSpawnInterval / Math.pow(1.25, this.stage - 1)) * (1 - 0.3 * this.enemySpawnBoostLevel);
         const enemiesPerSpawn = 3 + this.stage - 1;
 
         this.enemySpawnIntervalId = setInterval(() => {
             if (this.stageComplete) return;
 
             for (let i = 0; i < enemiesPerSpawn; i++) {
-                const enemy = PIXI.Sprite.from(Devil);
+                const enemy = PIXI.Sprite.from(this.textures.Devil);
                 enemy.anchor.set(0.5);
-                enemy.scale.set(0.1);
+                enemy.scale.set(0.1 * (1 + 0.1 * this.enemyGrowthLevel));
                 enemy.x = Math.random() * this.mapWidth;
                 enemy.y = Math.random() * this.mapHeight;
                 enemy.health = Math.floor(10 * Math.pow(1.25, this.stage - 1));
                 enemy.damage = Math.floor(5 * Math.pow(1.25, this.stage - 1));
+                enemy.speed = this.baseMonsterSpeed * (1 + 0.2 * this.enemySpeedBoostLevel);
 
                 this.camera.addChild(enemy);
                 this.enemies.push(enemy);
@@ -770,8 +821,10 @@ class DivineEchoGameCore {
     }
 
     updateEnemies() {
+        this.enemies = this.enemies.filter((enemy) => enemy && enemy.health > 0);
+
         this.enemies.forEach((enemy) => {
-            if (enemy.health <= 0) return;
+            if (!enemy || !this.player) return;
 
             const dx = this.player.x - enemy.x;
             const dy = this.player.y - enemy.y;
@@ -789,10 +842,15 @@ class DivineEchoGameCore {
             }
         });
 
-        if (this.boss && this.boss.health > 0) {
+        if (this.boss && this.boss.health > 0 && this.player) {
             const dx = this.player.x - this.boss.x;
             const dy = this.player.y - this.boss.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance > 1) {
+                this.boss.x += (dx / distance) * this.bossSpeed;
+                this.boss.y += (dy / distance) * this.bossSpeed;
+            }
 
             if (distance < 30 && !this.isInvincible) {
                 this.health -= this.boss.damage;
@@ -801,6 +859,8 @@ class DivineEchoGameCore {
                     this.gameOver();
                 }
             }
+        } else {
+            this.boss = null;
         }
     }
 
@@ -879,8 +939,12 @@ class DivineEchoGameCore {
             return true;
         });
     }
-
     resetStage() {
+        if (this.timerIntervalId) {
+            clearInterval(this.timerIntervalId);
+            this.timerIntervalId = null;
+        }
+
         this.timer = 120;
         this.stageComplete = false;
         this.isBossSpawned = false;
@@ -892,15 +956,28 @@ class DivineEchoGameCore {
             this.boss = null;
         }
 
+        if (this.player) {
+            this.camera.removeChild(this.player);
+            this.player = null;
+        }
+
         this.stage += 1;
 
         this.showStageText(`STAGE ${this.stage}`, () => {
-            if (this.player) this.camera.removeChild(this.player);
-            this.createPlayer();
             this.createMap();
+
+            this.createPlayer();
+
             this.spawnEnemies();
             this.startTimer();
         });
+    }
+
+    resetPlayerPosition() {
+        if (this.player) {
+            this.player.x = this.mapWidth / 2;
+            this.player.y = this.mapHeight / 2 - 100;
+        }
     }
 
     showStageText(text, callback) {
