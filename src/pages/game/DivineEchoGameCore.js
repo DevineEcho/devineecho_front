@@ -29,7 +29,7 @@ class DivineEchoGameCore {
         this.projectiles = [];
         this.boss = null;
         this.stage = 1;
-        this.timer = 120;
+        this.timer = 10;
         this.health = 100;
         this.maxHealth = 100;
 
@@ -43,6 +43,7 @@ class DivineEchoGameCore {
         this.levelExperience = [50, 100, 300, 500, 600, 700, 800, 900, 1000];
         this.experience = 0;
 
+        this.inputEnabled = false;
         this.isBossSpawned = false;
         this.stageComplete = false;
         this.isInvincible = false;
@@ -116,10 +117,21 @@ class DivineEchoGameCore {
             this.startTimer();
             this.startGameLoop();
 
-            window.addEventListener('keydown', (e) => (this.keys[e.key] = true));
-            window.addEventListener('keyup', (e) => (this.keys[e.key] = false));
+            this.inputEnabled = true;
+
+            window.addEventListener('keydown', (e) => {
+                if (this.inputEnabled) {
+                    this.keys[e.key] = true;
+                }
+            });
+            window.addEventListener('keyup', (e) => {
+                if (this.inputEnabled) {
+                    this.keys[e.key] = false;
+                }
+            });
         });
     }
+
     createMap() {
         const mapImages = [
             this.textures.map1,
@@ -535,15 +547,15 @@ class DivineEchoGameCore {
         let minDistance = Infinity;
 
         [...this.enemies, this.boss].forEach((enemy) => {
-            if (!enemy || enemy.health <= 0) return;
+            if (enemy && enemy.health > 0) {
+                const dx = enemy.x - this.player.x;
+                const dy = enemy.y - this.player.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
 
-            const dx = enemy.x - this.player.x;
-            const dy = enemy.y - this.player.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-
-            if (distance < minDistance) {
-                minDistance = distance;
-                target = enemy;
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    target = enemy;
+                }
             }
         });
 
@@ -594,25 +606,34 @@ class DivineEchoGameCore {
         const damage = damagePerLevel[Math.min(level - 1, 4)];
         const damageInterval = 500;
 
-        const auraSprite = PIXI.Sprite.from(SaintAura);
-        auraSprite.anchor.set(0.5);
-        auraSprite.alpha = 0.5;
-        auraSprite.width = radius * 2;
-        auraSprite.height = radius * 2;
-        this.camera.addChild(auraSprite);
+        if (!this.player) return;
+
+        this.auraSprite = PIXI.Sprite.from(this.textures.SaintAura);
+        this.auraSprite.anchor.set(0.5);
+        this.auraSprite.alpha = 0.5;
+        this.auraSprite.width = radius * 2;
+        this.auraSprite.height = radius * 2;
+        this.camera.addChild(this.auraSprite);
 
         this.saintAuraActive = true;
 
         const syncAuraToPlayer = () => {
-            if (auraSprite && this.player) {
-                auraSprite.x = this.player.x;
-                auraSprite.y = this.player.y;
+            if (this.auraSprite && this.player) {
+                this.auraSprite.x = this.player.x;
+                this.auraSprite.y = this.player.y;
+            } else {
+                this.app.ticker.remove(syncAuraToPlayer);
             }
         };
-        this.app.ticker.add(syncAuraToPlayer);
+        this.syncAuraToPlayerTicker = syncAuraToPlayer;
+        this.app.ticker.add(this.syncAuraToPlayerTicker);
 
-        const damageIntervalId = setInterval(() => {
-            if (!auraSprite.visible) return;
+        this.damageIntervalId = setInterval(() => {
+            if (!this.auraSprite || !this.auraSprite.visible || !this.player) {
+                clearInterval(this.damageIntervalId);
+                this.damageIntervalId = null;
+                return;
+            }
 
             [...this.enemies, this.boss].forEach((enemy) => {
                 if (!enemy || enemy.health <= 0) return;
@@ -639,10 +660,12 @@ class DivineEchoGameCore {
         }, damageInterval);
 
         const manageAura = () => {
-            auraSprite.visible = true;
+            if (!this.auraSprite || !this.player) return;
+
+            this.auraSprite.visible = true;
             setTimeout(() => {
-                auraSprite.visible = false;
-                if (this.saintAuraActive) {
+                if (this.auraSprite) this.auraSprite.visible = false;
+                if (this.saintAuraActive && this.auraSprite && this.player) {
                     setTimeout(manageAura, durationOff);
                 }
             }, durationOn);
@@ -651,10 +674,7 @@ class DivineEchoGameCore {
         manageAura();
 
         setTimeout(() => {
-            this.camera.removeChild(auraSprite);
-            clearInterval(damageIntervalId);
-            this.app.ticker.remove(syncAuraToPlayer);
-            this.saintAuraActive = false;
+            this.cleanupSaintAura();
         }, durationOn + durationOff);
     }
 
@@ -703,15 +723,15 @@ class DivineEchoGameCore {
                 let minDistance = Infinity;
 
                 [...this.enemies, this.boss].forEach((enemy) => {
-                    if (!enemy || enemy.health <= 0 || this.targetedEnemies.has(enemy)) return;
+                    if (enemy && enemy.health > 0 && !this.targetedEnemies.has(enemy)) {
+                        const dx = enemy.x - this.player.x;
+                        const dy = enemy.y - this.player.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
 
-                    const dx = enemy.x - this.player.x;
-                    const dy = enemy.y - this.player.y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-
-                    if (distance < minDistance) {
-                        minDistance = distance;
-                        target = enemy;
+                        if (distance < minDistance) {
+                            minDistance = distance;
+                            target = enemy;
+                        }
                     }
                 });
 
@@ -746,7 +766,7 @@ class DivineEchoGameCore {
 
         setTimeout(() => {
             this.godsHammerInterval = null;
-            this.targetedEnemies.clear();
+            if (this.targetedEnemies) this.targetedEnemies.clear();
         }, hammerDropDelay);
     }
 
@@ -865,7 +885,7 @@ class DivineEchoGameCore {
     }
 
     movePlayer() {
-        if (!this.player) return;
+        if (!this.inputEnabled || !this.player) return;
 
         let dx = 0;
         let dy = 0;
@@ -974,20 +994,20 @@ class DivineEchoGameCore {
         this.enemies = this.enemies.filter((enemy) => enemy && enemy.health > 0);
 
         this.enemies.forEach((enemy) => {
-            if (!enemy || !this.player) return;
+            if (enemy && this.player) {
+                const dx = this.player.x - enemy.x;
+                const dy = this.player.y - enemy.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
 
-            const dx = this.player.x - enemy.x;
-            const dy = this.player.y - enemy.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
+                enemy.x += (dx / distance) * enemy.speed;
+                enemy.y += (dy / distance) * enemy.speed;
 
-            enemy.x += (dx / distance) * enemy.speed;
-            enemy.y += (dy / distance) * enemy.speed;
-
-            if (distance < 20 && !this.isInvincible) {
-                this.health -= enemy.damage;
-                this.startInvincibility();
-                if (this.health <= 0) {
-                    this.gameOver();
+                if (distance < 20 && !this.isInvincible) {
+                    this.health -= enemy.damage;
+                    this.startInvincibility();
+                    if (this.health <= 0) {
+                        this.gameOver();
+                    }
                 }
             }
         });
@@ -1068,10 +1088,12 @@ class DivineEchoGameCore {
                 if (distance < 20) {
                     enemy.health -= this.getHolyCircleDamage();
 
-                    this.camera.removeChild(enemy);
-                    this.enemies = this.enemies.filter((e) => e !== enemy);
-                    this.experience += 10;
-                    this.checkLevelUp();
+                    if (enemy.health <= 0) {
+                        this.camera.removeChild(enemy);
+                        this.enemies = this.enemies.filter((e) => e !== enemy);
+                        this.experience += 10;
+                        this.checkLevelUp();
+                    }
 
                     this.camera.removeChild(sprite);
                     hitEnemy = true;
@@ -1108,6 +1130,8 @@ class DivineEchoGameCore {
     }
 
     resetStage() {
+        this.inputEnabled = false;
+
         if (this.timerIntervalId) {
             clearInterval(this.timerIntervalId);
             this.timerIntervalId = null;
@@ -1129,6 +1153,20 @@ class DivineEchoGameCore {
             this.player = null;
         }
 
+        this.projectiles.forEach((projectile) => {
+            this.camera.removeChild(projectile.sprite);
+        });
+        this.projectiles = [];
+
+        if (this.godsHammerInterval) {
+            this.godsHammerInterval = null;
+        }
+        if (this.targetedEnemies) {
+            this.targetedEnemies.clear();
+        }
+
+        this.cleanupSaintAura();
+
         this.stage += 1;
 
         this.showStageText(`STAGE ${this.stage}`, () => {
@@ -1136,7 +1174,28 @@ class DivineEchoGameCore {
             this.createPlayer();
             this.spawnEnemies();
             this.startTimer();
+            this.inputEnabled = true;
         });
+    }
+
+    cleanupSaintAura() {
+        if (this.saintAuraActive) {
+            this.saintAuraActive = false;
+
+            if (this.auraSprite) {
+                this.camera.removeChild(this.auraSprite);
+                this.auraSprite = null;
+            }
+
+            if (this.syncAuraToPlayerTicker) {
+                this.app.ticker.remove(this.syncAuraToPlayerTicker);
+                this.syncAuraToPlayerTicker = null;
+            }
+            if (this.damageIntervalId) {
+                clearInterval(this.damageIntervalId);
+                this.damageIntervalId = null;
+            }
+        }
     }
 
     resetPlayerPosition() {
@@ -1147,6 +1206,8 @@ class DivineEchoGameCore {
     }
 
     showStageText(text, callback) {
+        this.inputEnabled = false;
+
         const stageText = new PIXI.Text(text, {
             fontFamily: 'ChosunCentennial',
             fontSize: 80,
@@ -1163,6 +1224,9 @@ class DivineEchoGameCore {
 
         setTimeout(() => {
             this.uiContainer.removeChild(stageText);
+
+            this.inputEnabled = true;
+
             if (callback) callback();
         }, 3000);
     }
