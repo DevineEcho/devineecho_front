@@ -29,7 +29,7 @@ class DivineEchoGameCore {
         this.projectiles = [];
         this.boss = null;
         this.stage = 1;
-        this.timer = 10;
+        this.timer = 120;
         this.health = 100;
         this.maxHealth = 100;
 
@@ -1233,8 +1233,9 @@ class DivineEchoGameCore {
 
     gameOver() {
         this.stageComplete = true;
+
         const gameOverText = new PIXI.Text('사망', {
-            fontFamily: 'Arial',
+            fontFamily: 'ChosunCentennial',
             fontSize: 64,
             fill: 0xff0000,
         });
@@ -1242,6 +1243,29 @@ class DivineEchoGameCore {
         gameOverText.y = this.app.view.height / 2;
         gameOverText.anchor.set(0.5);
         this.uiContainer.addChild(gameOverText);
+
+        this.pauseGame();
+
+        setTimeout(() => {
+            this.resetGame();
+        }, 10000);
+    }
+
+    resetGame() {
+        this.uiContainer.removeChildren();
+        this.camera.removeChildren();
+
+        this.enemies = [];
+        this.projectiles = [];
+        this.boss = null;
+        this.stage = 1;
+        this.timer = 120;
+        this.health = this.maxHealth;
+        this.experience = 0;
+        this.level = 1;
+
+        const event = new Event('resetGameUI');
+        window.dispatchEvent(event);
     }
 }
 

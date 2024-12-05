@@ -30,9 +30,16 @@ function DivineEchoGameUI() {
 
         initGame();
 
+        const resetGameHandler = () => {
+            pixiApp.current.stage.removeChildren();
+            initGame();
+        };
+        window.addEventListener('resetGameUI', resetGameHandler);
+
         return () => {
             pixiApp.current.destroy(true, true);
             window.removeEventListener('pointerdown', initHoverSound);
+            window.removeEventListener('resetGameUI', resetGameHandler);
         };
     }, []);
 
