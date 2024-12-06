@@ -185,14 +185,20 @@ function DivineEchoGameUI() {
         pixiApp.current.stage.addChild(skipButtonContainer);
 
         const skipVideo = () => {
-            videoSprite.texture.baseTexture.resource.source.pause();
-            pixiApp.current.stage.removeChild(videoSprite, skipButtonContainer);
+            console.log('Skip button pressed, skipping video...');
+            videoTexture.baseTexture.resource.source.pause();
+            pixiApp.current.stage.removeChild(videoSprite);
+            pixiApp.current.stage.removeChild(skipButtonContainer);
             startGame();
         };
 
-        skipButtonContainer.on('pointerdown', skipVideo);
+        skipButtonContainer.on('pointerdown', () => {
+            console.log('Pointerdown event triggered on skip button');
+            skipVideo();
+        });
 
         videoTexture.baseTexture.resource.source.onended = () => {
+            console.log('Video ended, starting game...');
             skipVideo();
         };
     };
