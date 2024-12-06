@@ -161,45 +161,9 @@ function DivineEchoGameUI() {
 
         pixiApp.current.stage.addChild(videoSprite);
 
-        const skipButton = new PIXI.Graphics();
-        skipButton.beginFill(0xff0000);
-        skipButton.drawRoundedRect(0, 0, 100, 40, 10);
-        skipButton.endFill();
-        skipButton.interactive = true;
-        skipButton.buttonMode = true;
-
-        const skipText = new PIXI.Text('건너띄기', {
-            fontFamily: 'Arial',
-            fontSize: 16,
-            fill: 0xffffff,
-            align: 'center',
-        });
-        skipText.anchor.set(0.5);
-        skipText.x = 50;
-        skipText.y = 20;
-
-        const skipButtonContainer = new PIXI.Container();
-        skipButtonContainer.addChild(skipButton, skipText);
-        skipButtonContainer.x = pixiApp.current.screen.width - 110;
-        skipButtonContainer.y = 10;
-        pixiApp.current.stage.addChild(skipButtonContainer);
-
-        const skipVideo = () => {
-            console.log('Skip button pressed, skipping video...');
-            videoTexture.baseTexture.resource.source.pause();
-            pixiApp.current.stage.removeChild(videoSprite);
-            pixiApp.current.stage.removeChild(skipButtonContainer);
-            startGame();
-        };
-
-        skipButtonContainer.on('pointerdown', () => {
-            console.log('Pointerdown event triggered on skip button');
-            skipVideo();
-        });
-
         videoTexture.baseTexture.resource.source.onended = () => {
-            console.log('Video ended, starting game...');
-            skipVideo();
+            pixiApp.current.stage.removeChild(videoSprite);
+            startGame();
         };
     };
 

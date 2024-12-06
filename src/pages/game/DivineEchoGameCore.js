@@ -6,10 +6,12 @@ import map4 from './images/map4.jpeg';
 import map5 from './images/map5.jpeg';
 import AngelKnight from './images/AngelKnight.png';
 import Devil from './images/Devil.png';
+import Angel from './images/Angel.png';
 import Boss1 from './images/Boss1.png';
 import Boss2 from './images/Boss2.png';
 import Boss3 from './images/Boss3.png';
 import Boss4 from './images/Boss4.png';
+import Angel4 from './images/Angel4.png';
 import SaintAura from './images/SaintAura.png';
 import GodsHammer from './images/GodsHammer.png';
 import HolyCircle from './images/HolyCircle.png';
@@ -28,7 +30,7 @@ class DivineEchoGameCore {
         this.enemies = [];
         this.projectiles = [];
         this.boss = null;
-        this.stage = 1;
+        this.stage = 4;
         this.timer = 120;
         this.health = 100;
         this.maxHealth = 100;
@@ -66,6 +68,11 @@ class DivineEchoGameCore {
         this.enemySpeedBoostLevel = 0;
         this.enemySpawnBoostLevel = 0;
 
+        this.isHallucinating = false;
+        this.isHallucinationPaused = false;
+        this.hallucinationInterval = null;
+        this.hallucinationTimeout = null;
+
         this.textures = {};
 
         this.preloadAssets().then(() => {
@@ -86,10 +93,12 @@ class DivineEchoGameCore {
             Boss2,
             Boss3,
             Boss4,
+            Angel4,
             SaintAura,
             GodsHammer,
             HolyCircle,
             Explosion,
+            Angel,
         };
 
         const loadTexture = (key, path) => {
@@ -116,6 +125,10 @@ class DivineEchoGameCore {
             this.startPlayerAttack();
             this.startTimer();
             this.startGameLoop();
+
+            if (this.stage >= 4) {
+                this.startHallucinationTimer();
+            }
 
             this.inputEnabled = true;
 
@@ -266,8 +279,66 @@ class DivineEchoGameCore {
         }
     }
 
+    pauseHallucinationTimer() {
+        if (this.hallucinationInterval) {
+            this.isHallucinationPaused = true;
+        }
+    }
+
+    resumeHallucinationTimer() {
+        if (this.hallucinationInterval && this.isHallucinationPaused) {
+            this.isHallucinationPaused = false;
+        } else if (!this.hallucinationInterval) {
+            this.startHallucinationTimer();
+        }
+    }
+
+    startHallucinationTimer() {
+        if (this.hallucinationInterval) {
+            return;
+        }
+
+        this.hallucinationInterval = setInterval(() => {
+            if (!this.isPaused && !this.isHallucinationPaused) {
+                this.startHallucination();
+
+                setTimeout(() => {
+                    this.endHallucination();
+                }, 3000);
+            }
+        }, 30000);
+    }
+
+    startHallucination() {
+        this.isHallucinating = true;
+        this.enemies.forEach((enemy) => {
+            if (enemy) {
+                enemy.texture = this.textures.Angel;
+            }
+        });
+
+        if (this.boss) {
+            this.boss.texture = this.textures.Angel4;
+        }
+    }
+
+    endHallucination() {
+        this.isHallucinating = false;
+
+        this.enemies.forEach((enemy) => {
+            if (enemy) {
+                enemy.texture = this.textures.Devil;
+            }
+        });
+
+        if (this.boss) {
+            this.boss.texture = this.textures.Boss4;
+        }
+    }
+
     showLevelUpUI() {
         this.pauseGame();
+        this.pauseHallucinationTimer();
         const levelUpContainer = new PIXI.Container();
         levelUpContainer.zIndex = 100;
         this.uiContainer.addChild(levelUpContainer);
@@ -381,8 +452,6 @@ class DivineEchoGameCore {
             }
         });
 
-        console.log('Level up UI shown');
-
         this.app.renderer.render(this.app.stage);
     }
 
@@ -470,16 +539,14 @@ class DivineEchoGameCore {
             selectButton.buttonMode = true;
 
             selectButton.on('pointerdown', () => {
-                console.log(`Selected ${option.name}`);
                 option.levelUpEffect();
                 this.uiContainer.removeChild(enemyLevelUpContainer);
                 this.resumeGame();
+                this.resumeHallucinationTimer();
             });
 
             optionContainer.addChild(selectButton);
         });
-
-        console.log('Enemy level up UI shown');
 
         this.app.renderer.render(this.app.stage);
     }
@@ -849,6 +916,14 @@ class DivineEchoGameCore {
     startGameLoop() {
         this.app.ticker.add(() => {
             if (!this.isPaused) {
+                if (this.stage >= 4 && !this.hallucinationInterval) {
+                    this.startHallucinationTimer();
+                }
+                if (this.stage === 5 && this.timer <= 30) {
+                    clearInterval(this.hallucinationInterval);
+                    this.hallucinationInterval = null;
+                    this.startHallucination();
+                }
                 this.movePlayer();
                 this.moveCamera();
                 this.updateProjectiles();
@@ -931,7 +1006,8 @@ class DivineEchoGameCore {
         const enemiesPerSpawn = 3 + this.stage - 1;
 
         const spawnEnemy = () => {
-            const enemy = PIXI.Sprite.from(this.textures.Devil);
+            const enemyTexture = this.isHallucinating ? this.textures.Angel : this.textures.Devil;
+            const enemy = new PIXI.Sprite(enemyTexture);
             enemy.anchor.set(0.5);
             enemy.scale.set(0.1 * (1 + 0.1 * this.enemyGrowthLevel));
 
@@ -958,10 +1034,12 @@ class DivineEchoGameCore {
     }
 
     spawnBoss() {
-        const bossImages = [Boss1, Boss2, Boss3, Boss4];
-        const bossImage = bossImages[this.stage - 1] || Boss1;
+        const bossImages = [this.textures.Boss1, this.textures.Boss2, this.textures.Boss3, this.textures.Boss4];
+        const hallucinationBossImage = this.textures.Angel4;
 
-        this.boss = PIXI.Sprite.from(bossImage);
+        const bossTexture = this.isHallucinating ? hallucinationBossImage : bossImages[this.stage - 1];
+
+        this.boss = new PIXI.Sprite(bossTexture);
         this.boss.anchor.set(0.5);
         this.boss.scale.set(0.3);
         this.boss.x = Math.random() * this.mapWidth;
@@ -1107,7 +1185,6 @@ class DivineEchoGameCore {
 
                 if (distance < 30) {
                     this.boss.health -= this.getHolyCircleDamage();
-                    console.log(`보스 체력: ${this.boss.health}, Holy Circle 데미지: ${this.getHolyCircleDamage()}`);
 
                     this.boss.alpha = 0.5;
                     setTimeout(() => {
@@ -1163,6 +1240,11 @@ class DivineEchoGameCore {
         }
         if (this.targetedEnemies) {
             this.targetedEnemies.clear();
+        }
+
+        if (this.hallucinationInterval) {
+            clearInterval(this.hallucinationInterval);
+            this.hallucinationInterval = null;
         }
 
         this.cleanupSaintAura();
@@ -1234,7 +1316,12 @@ class DivineEchoGameCore {
     gameOver() {
         this.stageComplete = true;
 
-        const gameOverText = new PIXI.Text('사망', {
+        if (this.hallucinationInterval) {
+            clearInterval(this.hallucinationInterval);
+            this.hallucinationInterval = null;
+        }
+
+        const gameOverText = new PIXI.Text('You died', {
             fontFamily: 'ChosunCentennial',
             fontSize: 64,
             fill: 0xff0000,
