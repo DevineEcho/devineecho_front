@@ -16,6 +16,7 @@ import SaintAura from './images/SaintAura.png';
 import GodsHammer from './images/GodsHammer.png';
 import HolyCircle from './images/HolyCircle.png';
 import Explosion from './images/Explosion.png';
+import HolyGrail from './images/HolyGrail.png';
 
 class DivineEchoGameCore {
     constructor(app) {
@@ -30,7 +31,7 @@ class DivineEchoGameCore {
         this.enemies = [];
         this.projectiles = [];
         this.boss = null;
-        this.stage = 4;
+        this.stage = 1;
         this.timer = 120;
         this.health = 100;
         this.maxHealth = 100;
@@ -40,10 +41,19 @@ class DivineEchoGameCore {
             saintAura: { level: 0, maxLevel: 5 },
             godsHammer: { level: 0, maxLevel: 5 },
         };
+
+        this.enemyGrowthLevel = 0;
+        this.enemySpeedBoostLevel = 0;
+        this.enemySpawnBoostLevel = 0;
+
         this.isPaused = false;
         this.level = 1;
-        this.levelExperience = [50, 100, 300, 500, 600, 700, 800, 900, 1000];
+        this.levelExperience = [
+            50, 100, 300, 500, 700, 900, 1200, 1500, 1800, 2200, 2600, 3000, 3500, 4000, 4600, 5200, 5800, 6500, 7200,
+            8000,
+        ];
         this.experience = 0;
+        this.experiencePerKill = 10;
 
         this.inputEnabled = false;
         this.isBossSpawned = false;
@@ -64,9 +74,6 @@ class DivineEchoGameCore {
         this.lastHolyCircleTime = 0;
         this.holyCircleCooldown = 1000;
         this.baseHammerDamage = 20;
-        this.enemyGrowthLevel = 0;
-        this.enemySpeedBoostLevel = 0;
-        this.enemySpawnBoostLevel = 0;
 
         this.isHallucinating = false;
         this.isHallucinationPaused = false;
@@ -99,6 +106,7 @@ class DivineEchoGameCore {
             HolyCircle,
             Explosion,
             Angel,
+            HolyGrail,
         };
 
         const loadTexture = (key, path) => {
@@ -251,8 +259,17 @@ class DivineEchoGameCore {
         if (this.experience >= currentExp) {
             this.experience -= currentExp;
             this.level++;
+
             this.pauseGame();
-            this.showLevelUpUI();
+
+            if (this.isAllSkillsMaxed() && this.isAllEnemySkillsMaxed()) {
+                console.log('All skills (player and enemy) are maxed out. No level-up UI will appear.');
+                this.resumeGame();
+            } else if (this.isAllSkillsMaxed()) {
+                this.showEnemyLevelUpUI(true);
+            } else {
+                this.showLevelUpUI();
+            }
         }
     }
 
@@ -294,7 +311,7 @@ class DivineEchoGameCore {
     }
 
     startHallucinationTimer() {
-        if (this.hallucinationInterval) {
+        if (this.hallucinationInterval || this.stage < 4) {
             return;
         }
 
@@ -336,9 +353,18 @@ class DivineEchoGameCore {
         }
     }
 
+    isAllSkillsMaxed() {
+        return Object.values(this.skills).every((skill) => skill.level >= skill.maxLevel);
+    }
+
+    isAllEnemySkillsMaxed() {
+        return this.enemyGrowthLevel >= 10 && this.enemySpeedBoostLevel >= 10 && this.enemySpawnBoostLevel >= 10;
+    }
+
     showLevelUpUI() {
         this.pauseGame();
         this.pauseHallucinationTimer();
+
         const levelUpContainer = new PIXI.Container();
         levelUpContainer.zIndex = 100;
         this.uiContainer.addChild(levelUpContainer);
@@ -455,9 +481,20 @@ class DivineEchoGameCore {
         this.app.renderer.render(this.app.stage);
     }
 
-    showEnemyLevelUpUI() {
+    showEnemyLevelUpUI(doubleUpgrade = false) {
+        if (this.isAllEnemySkillsMaxed()) {
+            console.log('All enemy skills are maxed. No enemy level-up UI will appear.');
+            this.resumeGame();
+            this.resumeHallucinationTimer();
+            return;
+        }
+
+        console.log('Attempting to show enemy level up UI');
+        this.pauseGame();
+        this.pauseHallucinationTimer();
+
         const enemyLevelUpContainer = new PIXI.Container();
-        enemyLevelUpContainer.zIndex = 101;
+        enemyLevelUpContainer.zIndex = 999;
         this.uiContainer.addChild(enemyLevelUpContainer);
 
         const background = new PIXI.Graphics();
@@ -466,26 +503,56 @@ class DivineEchoGameCore {
         background.endFill();
         enemyLevelUpContainer.addChild(background);
 
+        const optionWidth = this.app.view.width / 3;
+        const optionHeight = this.app.view.height / 2;
+
+        let upgradeCount = 0;
+
         const enemyOptions = [
             {
                 name: '악마는 성장중',
-                description: '소환되는 적(보스 제외)의 크기가 10% 상승합니다.',
-                levelUpEffect: () => this.increaseEnemySize(0.1),
+                level: this.enemyGrowthLevel,
+                description:
+                    this.enemyGrowthLevel >= 10
+                        ? '이 스킬은 이미 최대 레벨입니다.'
+                        : `소환되는 적(보스 제외)의 크기가 10% 상승합니다. 현재 레벨: ${this.enemyGrowthLevel}`,
+                levelUpEffect: () => this.increaseEnemySize(),
             },
             {
                 name: '부스터',
-                description: '소환되는 적(보스 제외)의 이동속도가 20% 상승합니다.',
-                levelUpEffect: () => this.increaseEnemySpeed(0.2),
+                level: this.enemySpeedBoostLevel,
+                description:
+                    this.enemySpeedBoostLevel >= 10
+                        ? '이 스킬은 이미 최대 레벨입니다.'
+                        : `소환되는 적(보스 제외)의 이동속도가 20% 상승합니다. 현재 레벨: ${this.enemySpeedBoostLevel}`,
+                levelUpEffect: () => this.increaseEnemySpeed(),
             },
             {
                 name: '악마공장 가동',
-                description: '적(보스 제외)의 스폰이 30% 빨라집니다.',
-                levelUpEffect: () => this.increaseEnemySpawnRate(0.3),
+                level: this.enemySpawnBoostLevel,
+                description:
+                    this.enemySpawnBoostLevel >= 10
+                        ? '이 스킬은 이미 최대 레벨입니다.'
+                        : `적(보스 제외)의 스폰이 30% 빨라집니다. 현재 레벨: ${this.enemySpawnBoostLevel}`,
+                levelUpEffect: () => this.increaseEnemySpawnRate(),
             },
         ];
 
-        const optionWidth = this.app.view.width / 3;
-        const optionHeight = this.app.view.height / 2;
+        const handleUpgradeSelection = (option) => {
+            console.log(`Selected: ${option.name}`);
+            option.levelUpEffect();
+            upgradeCount++;
+
+            if (doubleUpgrade && upgradeCount < 2) {
+                console.log('Attempting second upgrade...');
+                enemyLevelUpContainer.visible = false;
+                this.showEnemyLevelUpUI(false);
+            } else {
+                this.uiContainer.removeChild(enemyLevelUpContainer);
+                this.resumeGame();
+                this.resumeHallucinationTimer();
+            }
+        };
 
         enemyOptions.forEach((option, index) => {
             const xPosition = index * optionWidth;
@@ -502,7 +569,7 @@ class DivineEchoGameCore {
             optionBg.x = 10;
             optionContainer.addChild(optionBg);
 
-            const skillName = new PIXI.Text(`${option.name}`, {
+            const skillName = new PIXI.Text(`${option.name} (Lv${option.level})`, {
                 fontFamily: 'Arial',
                 fontSize: 20,
                 fill: 0xffffff,
@@ -539,24 +606,22 @@ class DivineEchoGameCore {
             selectButton.buttonMode = true;
 
             selectButton.on('pointerdown', () => {
-                option.levelUpEffect();
-                this.uiContainer.removeChild(enemyLevelUpContainer);
-                this.resumeGame();
-                this.resumeHallucinationTimer();
+                handleUpgradeSelection(option);
             });
 
             optionContainer.addChild(selectButton);
         });
 
         this.app.renderer.render(this.app.stage);
+        console.log('Enemy level up UI should now be visible');
     }
 
-    increaseEnemySize(factor) {
-        this.enemyGrowthLevel += factor;
+    increaseEnemySize(levelIncrement = 1) {
+        this.enemyGrowthLevel += levelIncrement;
 
         this.enemies.forEach((enemy) => {
             if (enemy) {
-                enemy.scale.set(enemy.scale.x * (1 + factor));
+                enemy.scale.set(enemy.scale.x * (1 + 0.1 * levelIncrement));
                 enemy.health = Math.floor(enemy.health * 1.2);
             }
         });
@@ -566,17 +631,17 @@ class DivineEchoGameCore {
         }
     }
 
-    increaseEnemySpeed(factor) {
-        this.enemySpeedBoostLevel += factor;
+    increaseEnemySpeed(levelIncrement = 1) {
+        this.enemySpeedBoostLevel += levelIncrement;
         this.enemies.forEach((enemy) => {
             if (enemy) {
-                enemy.speed *= 1 + factor;
+                enemy.speed *= 1 + 0.2 * levelIncrement;
             }
         });
     }
 
-    increaseEnemySpawnRate(factor) {
-        this.enemySpawnBoostLevel += factor;
+    increaseEnemySpawnRate(levelIncrement = 1) {
+        this.enemySpawnBoostLevel += levelIncrement;
         this.spawnEnemies();
     }
 
@@ -592,6 +657,15 @@ class DivineEchoGameCore {
         if (this.skills.holyCircle.level > 0) this.updateHolyCircle();
         if (this.skills.saintAura.level > 0) this.updateSaintAura();
         if (this.skills.godsHammer.level > 0) this.updateGodsHammer();
+    }
+
+    handleEnemyDeath(enemy) {
+        if (enemy && enemy.health <= 0) {
+            this.camera.removeChild(enemy);
+            this.enemies = this.enemies.filter((e) => e !== enemy);
+            this.experience += this.experiencePerKill;
+            this.checkLevelUp();
+        }
     }
 
     updateHolyCircle() {
@@ -719,8 +793,7 @@ class DivineEchoGameCore {
                     }, 200);
 
                     if (enemy.health <= 0) {
-                        this.camera.removeChild(enemy);
-                        this.enemies = this.enemies.filter((e) => e !== enemy);
+                        this.handleEnemyDeath(enemy);
                     }
                 }
             });
@@ -878,10 +951,7 @@ class DivineEchoGameCore {
                 }, 200);
 
                 if (enemy.health <= 0) {
-                    this.camera.removeChild(enemy);
-                    this.enemies = this.enemies.filter((e) => e !== enemy);
-
-                    this.targetedEnemies.delete(enemy);
+                    this.handleEnemyDeath(enemy);
                 }
             }
         });
@@ -906,8 +976,7 @@ class DivineEchoGameCore {
                 }, 200);
 
                 if (enemy.health <= 0) {
-                    this.camera.removeChild(enemy);
-                    this.enemies = this.enemies.filter((e) => e !== enemy);
+                    this.handleEnemyDeath(enemy);
                 }
             }
         });
@@ -919,11 +988,13 @@ class DivineEchoGameCore {
                 if (this.stage >= 4 && !this.hallucinationInterval) {
                     this.startHallucinationTimer();
                 }
-                if (this.stage === 5 && this.timer <= 30) {
+
+                if (this.stage === 5 && this.timer <= 30 && !this.isHallucinating) {
                     clearInterval(this.hallucinationInterval);
                     this.hallucinationInterval = null;
                     this.startHallucination();
                 }
+
                 this.movePlayer();
                 this.moveCamera();
                 this.updateProjectiles();
@@ -946,6 +1017,8 @@ class DivineEchoGameCore {
             }
             this.timer -= 1;
             this.updateUI();
+
+            this.checkHolyGrailSpawn();
 
             if (this.timer === 60 && !this.isBossSpawned) {
                 this.spawnBoss();
@@ -1167,10 +1240,7 @@ class DivineEchoGameCore {
                     enemy.health -= this.getHolyCircleDamage();
 
                     if (enemy.health <= 0) {
-                        this.camera.removeChild(enemy);
-                        this.enemies = this.enemies.filter((e) => e !== enemy);
-                        this.experience += 10;
-                        this.checkLevelUp();
+                        this.handleEnemyDeath(enemy);
                     }
 
                     this.camera.removeChild(sprite);
@@ -1192,9 +1262,7 @@ class DivineEchoGameCore {
                     }, 200);
 
                     if (this.boss.health <= 0) {
-                        this.camera.removeChild(this.boss);
-                        this.boss = null;
-                        this.isBossSpawned = false;
+                        this.handleEnemyDeath(this.boss);
                     }
 
                     this.camera.removeChild(sprite);
@@ -1206,17 +1274,82 @@ class DivineEchoGameCore {
         });
     }
 
-    resetStage() {
-        this.inputEnabled = false;
-
-        if (this.timerIntervalId) {
-            clearInterval(this.timerIntervalId);
-            this.timerIntervalId = null;
+    checkHolyGrailSpawn() {
+        if (this.timer === 80 || this.timer === 40) {
+            this.spawnHolyGrail();
         }
+    }
 
+    spawnHolyGrail() {
+        const holyGrail = new PIXI.Sprite(this.textures.HolyGrail);
+        holyGrail.anchor.set(0.5);
+        holyGrail.scale.set(0.1667);
+        holyGrail.x = Math.random() * this.mapWidth;
+        holyGrail.y = Math.random() * this.mapHeight;
+
+        const aurora = new PIXI.Graphics();
+        aurora.beginFill(0xffff49, 0.3);
+        aurora.drawCircle(0, 0, 30);
+        aurora.endFill();
+        aurora.x = holyGrail.x;
+        aurora.y = holyGrail.y;
+        aurora.alpha = 0.5;
+
+        let auroraScaleDirection = 1;
+        this.app.ticker.add(() => {
+            if (aurora.parent) {
+                aurora.scale.x += 0.005 * auroraScaleDirection;
+                aurora.scale.y += 0.005 * auroraScaleDirection;
+                if (aurora.scale.x > 1.2 || aurora.scale.x < 0.8) {
+                    auroraScaleDirection *= -1;
+                }
+            }
+        });
+
+        this.camera.addChild(aurora);
+        this.camera.addChild(holyGrail);
+
+        let direction = 1;
+        this.app.ticker.add(() => {
+            if (holyGrail.parent) {
+                holyGrail.y += 0.5 * direction;
+                aurora.y = holyGrail.y;
+                if (holyGrail.y < holyGrail.originalY - 10 || holyGrail.y > holyGrail.originalY + 10) {
+                    direction *= -1;
+                }
+            }
+        });
+
+        holyGrail.originalY = holyGrail.y;
+
+        const checkCollision = () => {
+            if (
+                this.player &&
+                holyGrail &&
+                Math.abs(this.player.x - holyGrail.x) < 30 &&
+                Math.abs(this.player.y - holyGrail.y) < 30
+            ) {
+                this.health = Math.min(this.maxHealth, this.health + 15);
+                this.updateUI();
+                this.camera.removeChild(holyGrail);
+                this.camera.removeChild(aurora);
+                this.app.ticker.remove(checkCollision);
+            }
+        };
+
+        this.app.ticker.add(checkCollision);
+    }
+
+    resetStage() {
         this.timer = 120;
         this.stageComplete = false;
         this.isBossSpawned = false;
+
+        this.camera.children.forEach((child) => {
+            if (child.texture === this.textures.HolyGrail) {
+                this.camera.removeChild(child);
+            }
+        });
 
         this.enemies.forEach((enemy) => this.camera.removeChild(enemy));
         this.enemies = [];
@@ -1234,22 +1367,6 @@ class DivineEchoGameCore {
             this.camera.removeChild(projectile.sprite);
         });
         this.projectiles = [];
-
-        if (this.godsHammerInterval) {
-            this.godsHammerInterval = null;
-        }
-        if (this.targetedEnemies) {
-            this.targetedEnemies.clear();
-        }
-
-        if (this.hallucinationInterval) {
-            clearInterval(this.hallucinationInterval);
-            this.hallucinationInterval = null;
-        }
-
-        this.cleanupSaintAura();
-
-        this.stage += 1;
 
         this.showStageText(`STAGE ${this.stage}`, () => {
             this.createMap();
