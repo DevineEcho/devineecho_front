@@ -642,7 +642,13 @@ class DivineEchoGameCore {
 
     increaseEnemySpawnRate(levelIncrement = 1) {
         this.enemySpawnBoostLevel += levelIncrement;
-        this.spawnEnemies();
+
+        // 스폰 속도 비율 계산: 1.0에서 2.0까지 선형 증가
+        const maxBoostLevel = 10;
+        const spawnSpeedMultiplier = 1.0 + (this.enemySpawnBoostLevel - 1) * (1.0 / (maxBoostLevel - 1));
+
+        // 스폰 간격 업데이트
+        this.spawnEnemies(spawnSpeedMultiplier);
     }
 
     upgradeSkill(index) {
@@ -1068,14 +1074,14 @@ class DivineEchoGameCore {
         }
     }
 
-    spawnEnemies() {
+    spawnEnemies(spawnSpeedMultiplier = 1.0) {
         if (this.enemySpawnIntervalId) {
             clearInterval(this.enemySpawnIntervalId);
         }
 
         const baseSpawnInterval = 2000;
-        const spawnInterval =
-            (baseSpawnInterval / Math.pow(1.25, this.stage - 1)) * (1 - 0.3 * this.enemySpawnBoostLevel);
+        const spawnInterval = baseSpawnInterval / spawnSpeedMultiplier;
+
         const enemiesPerSpawn = 3 + this.stage - 1;
 
         const spawnEnemy = () => {

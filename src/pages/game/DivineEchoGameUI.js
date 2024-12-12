@@ -3,7 +3,20 @@ import * as PIXI from 'pixi.js';
 import initialBackground from './images/initialBackground.jpeg';
 import introVideo from './video/Test.mp4';
 import hoverSoundFile from './sounds/ButtonSound.mp3';
+import WebFont from 'webfontloader';
 import DivineEchoGameCore from './DivineEchoGameCore';
+
+const loadFonts = () => {
+    return new Promise((resolve) => {
+        WebFont.load({
+            custom: {
+                families: ['ChosunCentennial'],
+                urls: ['https://gcore.jsdelivr.net/gh/projectnoonnu/noonfonts_2206-02@1.0/ChosunCentennial.woff2'],
+            },
+            active: resolve,
+        });
+    });
+};
 
 function DivineEchoGameUI() {
     const pixiContainer = useRef(null);
@@ -12,6 +25,11 @@ function DivineEchoGameUI() {
     const gameCore = useRef(null);
 
     useEffect(() => {
+        const initGameAfterFonts = async () => {
+            await loadFonts();
+            initGame();
+        };
+
         pixiApp.current = new PIXI.Application({
             width: 960,
             height: 640,
@@ -28,7 +46,7 @@ function DivineEchoGameUI() {
 
         window.addEventListener('pointerdown', initHoverSound);
 
-        initGame();
+        initGameAfterFonts();
 
         const resetGameHandler = () => {
             pixiApp.current.stage.removeChildren();
