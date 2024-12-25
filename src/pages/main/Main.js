@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import GameboyImage from './Gameboy.png';
 import Login from '../login/Login';
-import DivineEchoGame from '../game/DivineEchoGameUI';
+import DivineEchoGameUI from '../game/DivineEchoGameUI';
 import './Main.css';
 
 function Main() {
@@ -22,7 +22,7 @@ function Main() {
         <div className="gameboy-container">
             <img src={GameboyImage} alt="Game Boy" className="gameboy-image" />
             <div className="gameboy-screen">
-                {isLoggedIn ? <DivineEchoGame /> : <Login onLoginSuccess={handleLoginSuccess} />}
+                {isLoggedIn ? <DivineEchoGameUI /> : <Login onLoginSuccess={handleLoginSuccess} />}
             </div>
         </div>
     );

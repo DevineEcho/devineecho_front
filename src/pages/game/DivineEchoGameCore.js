@@ -1346,7 +1346,66 @@ class DivineEchoGameCore {
         this.app.ticker.add(checkCollision);
     }
 
+    async saveStageData(playerData) {
+        const token = localStorage.getItem('token'); // 인증 토큰
+        try {
+            const response = await fetch('http://localhost:8080/api/players/stageClear', {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(playerData),
+            });
+
+            if (response.ok) {
+                console.log('Stage data saved successfully.');
+            } else {
+                console.error('Failed to save stage data.');
+            }
+        } catch (error) {
+            console.error('Error during stage data save:', error.message || JSON.stringify(error));
+        }
+    }
+
     resetStage() {
+        const playerData = {
+            level: this.level,
+            exp: this.experience,
+            stage: this.stage,
+            playerSkills: [
+                {
+                    name: 'Holy Circle',
+                    level: this.skills.holyCircle.level,
+                },
+                {
+                    name: 'Saint Aura',
+                    level: this.skills.saintAura.level,
+                },
+                {
+                    name: "God's Hammer",
+                    level: this.skills.godsHammer.level,
+                },
+            ],
+            enemySkills: [
+                {
+                    name: 'Enemy Growth',
+                    level: this.enemyGrowthLevel,
+                },
+                {
+                    name: 'Speed Boost',
+                    level: this.enemySpeedBoostLevel,
+                },
+                {
+                    name: 'Spawn Boost',
+                    level: this.enemySpawnBoostLevel,
+                },
+            ],
+        };
+
+        // 스테이지 데이터 저장 (this.saveStageData로 호출)
+        this.saveStageData(playerData);
+
         this.timer = 120;
         this.stageComplete = false;
         this.isBossSpawned = false;
