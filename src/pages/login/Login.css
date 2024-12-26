@@ -2,31 +2,81 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    background-color: #2b2b2b;
     padding: 20px;
-    gap: 10px;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.7);
+    width: 300px;
+    margin: 20px auto;
 }
 
-.button-container {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 10px;
-    gap: 10px;
-}
-
-.secondary-button {
+.login-form input {
+    width: 100%;
     padding: 10px;
-    background-color: #f0f0f0;
-    border: none;
-    cursor: pointer;
+    margin-bottom: 15px;
+    border: 1px solid #555;
+    background-color: #3a3a3a;
+    color: #ddd;
+    border-radius: 5px;
+    box-sizing: border-box;
+    transition: all 0.3s;
 }
 
-.secondary-button:hover {
-    background-color: #ddd;
+.login-form input:focus {
+    outline: none;
+    border-color: #cc4444;
+    background-color: #444;
+    box-shadow: 0 0 5px rgba(204, 68, 68, 0.8);
+}
+
+.login-form button {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.login-button,
+.signup-button,
+.back-button {
+    background-color: #444;
+    color: #eee;
+    border: none;
+}
+
+.login-button:hover,
+.signup-button:hover,
+.back-button:hover {
+    background-color: #555;
+}
+
+.recovery-button {
+    background-color: transparent;
+    color: #aaa;
+    text-decoration: underline;
+    text-align: center;
 }
 
 .kakao-login-button {
-    width: 100%;
-    max-width: 200px;
+    background-color: #fee500;
+    color: #000;
+    border: none;
+    border-radius: 5px;
+    padding: 10px;
+    font-size: 16px;
     cursor: pointer;
+}
+
+.kakao-login-button:hover {
+    background-color: #ffd700;
+}
+
+.info-text {
+    font-size: 12px;
+    color: #fff;
+    margin-top: 10px;
+    text-align: center;
 }

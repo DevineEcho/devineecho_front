@@ -10,6 +10,7 @@
 }
 
 .gameboy-screen {
+    pointer-events: auto !important;
     position: absolute;
     top: 18%;
     left: 24%;
@@ -19,13 +20,21 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    overflow: hidden;
+    overflow: visible;
+    z-index: 10;
+}
+
+.gameboy-screen:hover {
+    pointer-events: none;
 }
 
 .game-screen {
     width: 90%;
     height: 90%;
     background-color: #000;
+    position: relative;
+    overflow: visible;
+    z-index: 0;
     display: flex;
     align-items: center;
     justify-content: center;
