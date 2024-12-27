@@ -1,0 +1,13 @@
+.status-bar {
+    display: flex;
+    justify-content: space-around;
+    background-color: #222;
+    color: white;
+    padding: 10px;
+    border-bottom: 2px solid #444;
+}
+
+.status-bar span {
+    margin: 0 10px;
+    font-weight: bold;
+}

@@ -5,6 +5,7 @@ import introVideo from './video/Test.mp4';
 import hoverSoundFile from './sounds/ButtonSound.mp3';
 import WebFont from 'webfontloader';
 import DivineEchoGameCore from './DivineEchoGameCore';
+import StatusBar from '../status/StatusBar';
 
 const loadFonts = () => {
     return new Promise((resolve) => {
@@ -22,9 +23,33 @@ function DivineEchoGameUI() {
     const pixiContainer = useRef(null);
     const pixiApp = useRef(null);
     const [hoverSound, setHoverSound] = useState(null);
+    const [playerData, setPlayerData] = useState(null); // 상태 추가
     const gameCore = useRef(null);
 
     useEffect(() => {
+        const fetchPlayerData = async () => {
+            const token = localStorage.getItem('token');
+            try {
+                const response = await fetch('http://localhost:8080/api/players/load', {
+                    method: 'GET',
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    setPlayerData(data);
+                } else {
+                    console.error('Failed to fetch player data');
+                }
+            } catch (error) {
+                console.error('Error:', error.message || JSON.stringify(error));
+            }
+        };
+
+        fetchPlayerData();
+
         const initGameAfterFonts = async () => {
             await loadFonts();
             initGame();
@@ -60,6 +85,28 @@ function DivineEchoGameUI() {
             window.removeEventListener('resetGameUI', resetGameHandler);
         };
     }, []);
+
+    const loadPlayerData = async () => {
+        const token = localStorage.getItem('token');
+        try {
+            const response = await fetch('http://localhost:8080/api/players/load', {
+                method: 'GET',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+            if (response.ok) {
+                const data = await response.json();
+                console.log('Player data loaded:', data);
+                setPlayerData(data); // 상태에 저장
+            } else {
+                console.error('Failed to fetch player data');
+            }
+        } catch (error) {
+            console.error('Error during load player data:', error.message || JSON.stringify(error));
+        }
+    };
 
     const initGame = () => {
         const background = PIXI.Sprite.from(initialBackground);
@@ -146,28 +193,6 @@ function DivineEchoGameUI() {
         }
     };
 
-    const loadPlayerData = async () => {
-        const token = localStorage.getItem('token');
-        try {
-            const response = await fetch('http://localhost:8080/api/players/load', {
-                method: 'GET',
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-            });
-            if (response.ok) {
-                const playerData = await response.json();
-                console.log('Player data loaded:', playerData);
-                startGame(playerData);
-            } else {
-                console.error('Failed to load player data');
-            }
-        } catch (error) {
-            console.error('Error during load player data:', error.message || JSON.stringify(error));
-        }
-    };
-
     const playIntroVideo = () => {
         const videoTexture = PIXI.Texture.from(introVideo);
         const videoSprite = new PIXI.Sprite(videoTexture);
@@ -193,7 +218,12 @@ function DivineEchoGameUI() {
         }
     };
 
-    return <div ref={pixiContainer} style={{ width: '100%', height: '100%' }} />;
+    return (
+        <>
+            {playerData && <StatusBar player={playerData} />}
+            <div ref={pixiContainer} style={{ width: '100%', height: '100%' }} />
+        </>
+    );
 }
 
 export default DivineEchoGameUI;

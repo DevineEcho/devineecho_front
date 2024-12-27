@@ -3,17 +3,19 @@ import './Login.css';
 
 function Login({ onLoginSuccess }) {
     const [isSignup, setIsSignup] = useState(false);
+    const [isRecovery, setIsRecovery] = useState(false);
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [phoneNumber, setPhoneNumber] = useState('');
+    const [securityAnswer, setSecurityAnswer] = useState('');
     const usernameRef = useRef(null);
 
     useEffect(() => {
         if (usernameRef.current) {
             usernameRef.current.focus();
         }
-    }, [isSignup]);
+    }, [isSignup, isRecovery]);
 
     const handleLogin = async (e) => {
         e.preventDefault();
@@ -54,7 +56,12 @@ function Login({ onLoginSuccess }) {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ username, password, phoneNumber }),
+                body: JSON.stringify({
+                    username,
+                    password,
+                    phoneNumber,
+                    securityAnswer,
+                }),
             });
 
             if (response.ok) {
@@ -71,9 +78,51 @@ function Login({ onLoginSuccess }) {
         }
     };
 
+    const handlePasswordRecovery = async () => {
+        try {
+            const response = await fetch('http://localhost:8080/api/auth/recover', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phoneNumber, securityAnswer }),
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                alert(`캐릭터명: ${data.username}\n비밀번호: ${data.password}`);
+                setIsRecovery(false);
+            } else {
+                alert('정보가 일치하지 않습니다.');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('비밀번호 찾기 실패');
+        }
+    };
+
     return (
         <form className="login-form" onSubmit={isSignup ? handleSignup : handleLogin}>
-            {isSignup ? (
+            {isRecovery ? (
+                <>
+                    <input
+                        type="text"
+                        placeholder="휴대폰 번호"
+                        value={phoneNumber}
+                        onChange={(e) => setPhoneNumber(e.target.value)}
+                    />
+                    <input
+                        type="text"
+                        placeholder="비밀번호 찾기 질문의 답"
+                        value={securityAnswer}
+                        onChange={(e) => setSecurityAnswer(e.target.value)}
+                    />
+                    <button className="recovery-button" type="button" onClick={handlePasswordRecovery}>
+                        찾기
+                    </button>
+                    <button className="back-button" type="button" onClick={() => setIsRecovery(false)}>
+                        뒤로 가기
+                    </button>
+                </>
+            ) : isSignup ? (
                 <>
                     <input
                         ref={usernameRef}
@@ -100,6 +149,13 @@ function Login({ onLoginSuccess }) {
                         value={phoneNumber}
                         onChange={(e) => setPhoneNumber(e.target.value)}
                     />
+                    <input
+                        type="text"
+                        placeholder="나의 보물 제 1호는?"
+                        value={securityAnswer}
+                        onChange={(e) => setSecurityAnswer(e.target.value)}
+                    />
+
                     <button className="signup-button" type="submit">
                         회원가입하기
                     </button>
@@ -131,8 +187,8 @@ function Login({ onLoginSuccess }) {
                     <button className="signup-button" type="button" onClick={() => setIsSignup(true)}>
                         회원가입
                     </button>
-                    <button className="recovery-button" type="button">
-                        아이디 / 비밀번호 찾기
+                    <button className="recovery-button" type="button" onClick={() => setIsRecovery(true)}>
+                        캐릭터명 / 비밀번호 찾기
                     </button>
                     <button className="kakao-login-button" type="button">
                         카카오 로그인
