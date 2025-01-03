@@ -1,7 +1,7 @@
 import React from 'react';
 import './StatusBar.css';
 
-function StatusBar({ player }) {
+function StatusBar({ player, onLogout }) {
     return (
         <div className="status-bar">
             <span>캐릭터명: {player.username}</span>
@@ -10,6 +10,9 @@ function StatusBar({ player }) {
             <span>다이아: {player.diamond}</span>
             <span>체력: {player.health}</span>
             <span>스테이지: {player.currentStage}</span>
+            <button className="logout-button" onClick={onLogout}>
+                로그아웃
+            </button>
         </div>
     );
 }

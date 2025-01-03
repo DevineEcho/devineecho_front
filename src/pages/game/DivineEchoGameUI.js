@@ -6,6 +6,8 @@ import hoverSoundFile from './sounds/ButtonSound.mp3';
 import WebFont from 'webfontloader';
 import DivineEchoGameCore from './DivineEchoGameCore';
 import StatusBar from '../status/StatusBar';
+import Login from '../login/Login';
+import './DivineEchoGameUI.css';
 
 const loadFonts = () => {
     return new Promise((resolve) => {
@@ -23,41 +25,50 @@ function DivineEchoGameUI() {
     const pixiContainer = useRef(null);
     const pixiApp = useRef(null);
     const [hoverSound, setHoverSound] = useState(null);
-    const [playerData, setPlayerData] = useState(null); // 상태 추가
+    const [playerData, setPlayerData] = useState(null);
+    const [showStatusBar, setShowStatusBar] = useState(true);
+    const [isLoggedIn, setIsLoggedIn] = useState(true);
     const gameCore = useRef(null);
 
-    useEffect(() => {
-        const fetchPlayerData = async () => {
-            const token = localStorage.getItem('token');
-            try {
-                const response = await fetch('http://localhost:8080/api/players/load', {
-                    method: 'GET',
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                        'Content-Type': 'application/json',
-                    },
-                });
-                if (response.ok) {
-                    const data = await response.json();
-                    setPlayerData(data);
-                } else {
-                    console.error('Failed to fetch player data');
-                }
-            } catch (error) {
-                console.error('Error:', error.message || JSON.stringify(error));
+    const fetchPlayerData = async () => {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        try {
+            const response = await fetch('http://localhost:8080/api/players/load', {
+                method: 'GET',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setPlayerData(data);
+                console.log('Player data loaded:', data);
+            } else {
+                console.error('Failed to fetch player data');
             }
-        };
+        } catch (error) {
+            console.error('Error during fetch player data:', error.message || JSON.stringify(error));
+        }
+    };
 
-        fetchPlayerData();
+    useEffect(() => {
+        if (isLoggedIn) {
+            fetchPlayerData();
+        }
+    }, [isLoggedIn]);
 
+    useEffect(() => {
         const initGameAfterFonts = async () => {
             await loadFonts();
             initGame();
         };
 
         pixiApp.current = new PIXI.Application({
-            width: 960,
-            height: 640,
+            width: 880,
+            height: 528,
             backgroundColor: 0x000000,
         });
         pixiContainer.current.appendChild(pixiApp.current.view);
@@ -86,28 +97,6 @@ function DivineEchoGameUI() {
         };
     }, []);
 
-    const loadPlayerData = async () => {
-        const token = localStorage.getItem('token');
-        try {
-            const response = await fetch('http://localhost:8080/api/players/load', {
-                method: 'GET',
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-            });
-            if (response.ok) {
-                const data = await response.json();
-                console.log('Player data loaded:', data);
-                setPlayerData(data); // 상태에 저장
-            } else {
-                console.error('Failed to fetch player data');
-            }
-        } catch (error) {
-            console.error('Error during load player data:', error.message || JSON.stringify(error));
-        }
-    };
-
     const initGame = () => {
         const background = PIXI.Sprite.from(initialBackground);
         background.width = pixiApp.current.screen.width;
@@ -117,10 +106,12 @@ function DivineEchoGameUI() {
         const startNewButton = createButton('처음부터하기', pixiApp.current.screen.width / 4, 220, () => {
             resetPlayerData();
             playIntroVideo();
+            setShowStatusBar(false);
         });
 
         const continueButton = createButton('이어하기', (pixiApp.current.screen.width / 4) * 3, 220, () => {
-            loadPlayerData();
+            fetchPlayerData();
+            setShowStatusBar(false);
         });
 
         pixiApp.current.stage.addChild(startNewButton);
@@ -218,11 +209,23 @@ function DivineEchoGameUI() {
         }
     };
 
-    return (
-        <>
-            {playerData && <StatusBar player={playerData} />}
-            <div ref={pixiContainer} style={{ width: '100%', height: '100%' }} />
-        </>
+    const handleLogout = () => {
+        localStorage.removeItem('token');
+        setIsLoggedIn(false);
+    };
+
+    return isLoggedIn ? (
+        <div className="game-container">
+            {showStatusBar &&
+                (playerData ? (
+                    <StatusBar player={playerData} onLogout={handleLogout} />
+                ) : (
+                    <div className="status-bar">로딩 중</div>
+                ))}
+            <div ref={pixiContainer} className="pixi-container" />
+        </div>
+    ) : (
+        <Login onLoginSuccess={() => setIsLoggedIn(true)} />
     );
 }
 

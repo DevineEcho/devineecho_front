@@ -263,7 +263,6 @@ class DivineEchoGameCore {
             this.pauseGame();
 
             if (this.isAllSkillsMaxed() && this.isAllEnemySkillsMaxed()) {
-                console.log('All skills (player and enemy) are maxed out. No level-up UI will appear.');
                 this.resumeGame();
             } else if (this.isAllSkillsMaxed()) {
                 this.showEnemyLevelUpUI(true);
@@ -483,13 +482,11 @@ class DivineEchoGameCore {
 
     showEnemyLevelUpUI(doubleUpgrade = false) {
         if (this.isAllEnemySkillsMaxed()) {
-            console.log('All enemy skills are maxed. No enemy level-up UI will appear.');
             this.resumeGame();
             this.resumeHallucinationTimer();
             return;
         }
 
-        console.log('Attempting to show enemy level up UI');
         this.pauseGame();
         this.pauseHallucinationTimer();
 
@@ -539,12 +536,10 @@ class DivineEchoGameCore {
         ];
 
         const handleUpgradeSelection = (option) => {
-            console.log(`Selected: ${option.name}`);
             option.levelUpEffect();
             upgradeCount++;
 
             if (doubleUpgrade && upgradeCount < 2) {
-                console.log('Attempting second upgrade...');
                 enemyLevelUpContainer.visible = false;
                 this.showEnemyLevelUpUI(false);
             } else {
@@ -613,7 +608,6 @@ class DivineEchoGameCore {
         });
 
         this.app.renderer.render(this.app.stage);
-        console.log('Enemy level up UI should now be visible');
     }
 
     increaseEnemySize(levelIncrement = 1) {
@@ -1056,7 +1050,7 @@ class DivineEchoGameCore {
 
         const speed = this.playerSpeed;
 
-        const adjustedMapHeight = this.mapHeight - this.app.view.height / 2 + this.player.height / 2;
+        const adjustedMapHeight = this.mapHeight - this.player.height / 2;
 
         this.player.x = Math.max(0, Math.min(this.mapWidth, this.player.x + dx * speed));
         this.player.y = Math.max(0, Math.min(adjustedMapHeight, this.player.y + dy * speed));
@@ -1359,9 +1353,7 @@ class DivineEchoGameCore {
             });
 
             if (response.ok) {
-                console.log('Stage data saved successfully.');
             } else {
-                console.error('Failed to save stage data.');
             }
         } catch (error) {
             console.error('Error during stage data save:', error.message || JSON.stringify(error));

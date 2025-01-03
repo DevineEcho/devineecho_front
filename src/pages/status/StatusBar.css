@@ -1,13 +1,14 @@
-.status-bar {
-    display: flex;
-    justify-content: space-around;
-    background-color: #222;
+.logout-button {
+    margin-left: 20px;
+    padding: 5px 10px;
+    background-color: #d9534f;
     color: white;
-    padding: 10px;
-    border-bottom: 2px solid #444;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
 }
 
-.status-bar span {
-    margin: 0 10px;
-    font-weight: bold;
+.logout-button:hover {
+    background-color: #c9302c;
 }

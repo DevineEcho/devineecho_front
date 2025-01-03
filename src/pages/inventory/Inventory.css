@@ -1,0 +1,50 @@
+.inventory-container {
+    padding: 20px;
+}
+
+.inventory-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.inventory-tabs button {
+    padding: 10px 20px;
+    cursor: pointer;
+}
+
+.inventory-tabs button.active {
+    background-color: #007bff;
+    color: white;
+}
+
+.inventory-skills,
+.inventory-skins {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.skill-item,
+.skin-item {
+    border: 1px solid #ccc;
+    padding: 10px;
+    cursor: pointer;
+    border-radius: 5px;
+    text-align: center;
+}
+
+.skill-item.selected,
+.skin-item.selected {
+    background-color: #d1e7dd;
+    border-color: #0f5132;
+}
+
+.equipped-skills,
+.equipped-skin {
+    margin-top: 20px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    background-color: #f8f9fa;
+    border-radius: 5px;
+}
