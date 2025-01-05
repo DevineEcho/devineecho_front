@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as PIXI from 'pixi.js';
 import initialBackground from './images/initialBackground.jpeg';
 import introVideo from './video/Test.mp4';
@@ -24,11 +24,11 @@ const loadFonts = () => {
 function DivineEchoGameUI() {
     const pixiContainer = useRef(null);
     const pixiApp = useRef(null);
+    const gameCore = useRef(null);
     const [hoverSound, setHoverSound] = useState(null);
     const [playerData, setPlayerData] = useState(null);
     const [showStatusBar, setShowStatusBar] = useState(true);
     const [isLoggedIn, setIsLoggedIn] = useState(true);
-    const gameCore = useRef(null);
 
     const fetchPlayerData = async () => {
         const token = localStorage.getItem('token');
@@ -60,8 +60,29 @@ function DivineEchoGameUI() {
         }
     }, [isLoggedIn]);
 
+    const initGame = useCallback(() => {
+        const background = PIXI.Sprite.from(initialBackground);
+        background.width = pixiApp.current.screen.width;
+        background.height = pixiApp.current.screen.height;
+        pixiApp.current.stage.addChild(background);
+
+        addPixiButton('처음부터하기', 150, 150, () => {
+            resetPlayerData();
+            playIntroVideo();
+            setShowStatusBar(false);
+        });
+        addPixiButton('이어하기', 450, 150, () => {
+            fetchPlayerData();
+            startGame(playerData);
+            setShowStatusBar(false);
+        });
+        addPixiButton('상점', 150, 300, () => alert('상점으로 이동'));
+        addPixiButton('인벤토리', 450, 300, () => alert('인벤토리로 이동'));
+        addPixiButton('랭킹', 300, 450, () => alert('랭킹으로 이동'));
+    }, [fetchPlayerData, playerData]);
+
     useEffect(() => {
-        const initGameAfterFonts = async () => {
+        const initialize = async () => {
             await loadFonts();
             initGame();
         };
@@ -82,74 +103,39 @@ function DivineEchoGameUI() {
 
         window.addEventListener('pointerdown', initHoverSound);
 
-        initGameAfterFonts();
-
-        const resetGameHandler = () => {
-            pixiApp.current.stage.removeChildren();
-            initGame();
-        };
-        window.addEventListener('resetGameUI', resetGameHandler);
+        initialize();
 
         return () => {
             pixiApp.current.destroy(true, true);
             window.removeEventListener('pointerdown', initHoverSound);
-            window.removeEventListener('resetGameUI', resetGameHandler);
         };
-    }, []);
+    }, [initGame]);
 
-    const initGame = () => {
-        const background = PIXI.Sprite.from(initialBackground);
-        background.width = pixiApp.current.screen.width;
-        background.height = pixiApp.current.screen.height;
-        pixiApp.current.stage.addChild(background);
-
-        const startNewButton = createButton('처음부터하기', pixiApp.current.screen.width / 4, 220, () => {
-            resetPlayerData();
-            playIntroVideo();
-            setShowStatusBar(false);
-        });
-
-        const continueButton = createButton('이어하기', (pixiApp.current.screen.width / 4) * 3, 220, () => {
-            fetchPlayerData();
-            setShowStatusBar(false);
-        });
-
-        pixiApp.current.stage.addChild(startNewButton);
-        pixiApp.current.stage.addChild(continueButton);
-    };
-
-    const createButton = (text, x, y, onClick) => {
+    const addPixiButton = (text, x, y, onClick) => {
         const button = new PIXI.Container();
         const buttonBackground = new PIXI.Graphics();
-
-        const drawButtonBackground = (color) => {
-            buttonBackground.clear();
-            buttonBackground.beginFill(color);
-            buttonBackground.drawRoundedRect(-100, -30, 200, 60, 10);
-            buttonBackground.endFill();
-        };
-
-        drawButtonBackground(0x444444);
+        buttonBackground.beginFill(0x444444);
+        buttonBackground.drawRoundedRect(0, 0, 200, 60, 10);
+        buttonBackground.endFill();
 
         const buttonText = new PIXI.Text(text, {
             fontFamily: 'Arial',
-            fontSize: 32,
-            fill: 0xb22222,
+            fontSize: 24,
+            fill: 0xffffff,
             align: 'center',
-            fontWeight: 'bold',
         });
-        buttonText.anchor.set(0.5, 0.5);
+        buttonText.anchor.set(0.5);
+        buttonText.x = 100;
+        buttonText.y = 30;
 
         button.addChild(buttonBackground, buttonText);
         button.x = x;
         button.y = y;
-        button.eventMode = 'static';
-        button.buttonMode = true;
         button.interactive = true;
-        button.scale.set(1.2, 1.2);
+        button.buttonMode = true;
 
         button.on('pointerover', () => {
-            drawButtonBackground(0x666666);
+            buttonBackground.tint = 0x666666;
             if (hoverSound) {
                 hoverSound.currentTime = 0;
                 hoverSound.play();
@@ -157,11 +143,12 @@ function DivineEchoGameUI() {
         });
 
         button.on('pointerout', () => {
-            drawButtonBackground(0x444444);
+            buttonBackground.tint = 0xffffff;
         });
 
         button.on('pointerdown', onClick);
-        return button;
+
+        pixiApp.current.stage.addChild(button);
     };
 
     const resetPlayerData = async () => {
@@ -185,20 +172,24 @@ function DivineEchoGameUI() {
     };
 
     const playIntroVideo = () => {
-        const videoTexture = PIXI.Texture.from(introVideo);
-        const videoSprite = new PIXI.Sprite(videoTexture);
+        const video = document.createElement('video');
+        video.src = introVideo;
+        video.autoplay = true;
+        video.muted = false;
+        video.width = pixiApp.current.screen.width;
+        video.height = pixiApp.current.screen.height;
 
-        videoSprite.width = pixiApp.current.screen.width;
-        videoSprite.height = pixiApp.current.screen.height;
-        videoSprite.x = 0;
-        videoSprite.y = 0;
+        const texture = PIXI.Texture.from(video);
+        const videoSprite = new PIXI.Sprite(texture);
 
         pixiApp.current.stage.addChild(videoSprite);
 
-        videoTexture.baseTexture.resource.source.onended = () => {
+        video.onended = () => {
             pixiApp.current.stage.removeChild(videoSprite);
             startGame();
         };
+
+        video.play().catch((err) => console.error('Video playback failed:', err));
     };
 
     const startGame = (playerData = null) => {
@@ -216,12 +207,7 @@ function DivineEchoGameUI() {
 
     return isLoggedIn ? (
         <div className="game-container">
-            {showStatusBar &&
-                (playerData ? (
-                    <StatusBar player={playerData} onLogout={handleLogout} />
-                ) : (
-                    <div className="status-bar">로딩 중</div>
-                ))}
+            {showStatusBar && playerData && <StatusBar player={playerData} onLogout={handleLogout} />}
             <div ref={pixiContainer} className="pixi-container" />
         </div>
     ) : (
