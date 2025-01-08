@@ -28,6 +28,11 @@
     overflow: hidden;
     position: relative;
     z-index: 5;
+    pointer-events: auto; /* 기본값 */
+}
+
+.pixi-container.no-click {
+    pointer-events: none; /* 클릭 방지 */
 }
 
 .button-grid {

@@ -20,6 +20,10 @@ import HolyGrail from './images/HolyGrail.png';
 
 class DivineEchoGameCore {
     constructor(app) {
+        if (!app || !app.view) {
+            console.error('PIXI Application not initialized properly');
+            return;
+        }
         this.app = app;
         this.camera = new PIXI.Container();
         this.uiContainer = new PIXI.Container();
@@ -637,11 +641,9 @@ class DivineEchoGameCore {
     increaseEnemySpawnRate(levelIncrement = 1) {
         this.enemySpawnBoostLevel += levelIncrement;
 
-        // 스폰 속도 비율 계산: 1.0에서 2.0까지 선형 증가
         const maxBoostLevel = 10;
         const spawnSpeedMultiplier = 1.0 + (this.enemySpawnBoostLevel - 1) * (1.0 / (maxBoostLevel - 1));
 
-        // 스폰 간격 업데이트
         this.spawnEnemies(spawnSpeedMultiplier);
     }
 
@@ -1463,6 +1465,11 @@ class DivineEchoGameCore {
 
     showStageText(text, callback) {
         this.inputEnabled = false;
+
+        if (!this.app || !this.app.view) {
+            console.error('PIXI Application not initialized properly');
+            return;
+        }
 
         const stageText = new PIXI.Text(text, {
             fontFamily: 'ChosunCentennial',
