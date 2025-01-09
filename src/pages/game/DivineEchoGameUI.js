@@ -6,24 +6,26 @@ import buttonClickSoundFile from './sounds/ButtonClickSound.mp3';
 import DivineEchoGameCore from './DivineEchoGameCore';
 import StatusBar from '../status/StatusBar';
 import Login from '../login/Login';
+import Store from '../store/Store'; // Store 컴포넌트 import
 import './DivineEchoGameUI.css';
 
 function DivineEchoGameUI() {
     const pixiContainer = useRef(null);
     const pixiApp = useRef(null);
     const gameCore = useRef(null);
+
     const [hoverSound, setHoverSound] = useState(null);
     const [playerData, setPlayerData] = useState(null);
     const [showStatusBar, setShowStatusBar] = useState(true);
     const [isLoggedIn, setIsLoggedIn] = useState(true);
+    const [showStore, setShowStore] = useState(false); // 상점 상태 추가
 
     useEffect(() => {
-        // Load hover sound
         const sound = new Audio(buttonClickSoundFile);
         setHoverSound(sound);
     }, []);
 
-    const fetchPlayerData = async () => {
+    const fetchPlayerData = useCallback(async () => {
         const token = localStorage.getItem('token');
         if (!token) return;
 
@@ -45,115 +47,15 @@ function DivineEchoGameUI() {
         } catch (error) {
             console.error('Error during fetch player data:', error.message || JSON.stringify(error));
         }
-    };
+    }, []);
 
     useEffect(() => {
         if (isLoggedIn) {
             fetchPlayerData();
         }
-    }, [isLoggedIn]);
+    }, [isLoggedIn, fetchPlayerData]);
 
-    const addPixiButtons = useCallback(() => {
-        const buttons = [
-            { label: '처음부터하기', x: 150, y: 150, onClick: playIntroVideo },
-            { label: '이어하기', x: 450, y: 150, onClick: () => fetchPlayerData().then(startGame) },
-            { label: '상점', x: 150, y: 300, onClick: () => alert('상점으로 이동') },
-            { label: '인벤토리', x: 450, y: 300, onClick: () => alert('인벤토리로 이동') },
-            { label: '랭킹', x: 300, y: 450, onClick: () => alert('랭킹으로 이동') },
-        ];
-
-        // 클릭 사운드 로드
-        const clickSound = new Audio(buttonClickSoundFile);
-
-        buttons.forEach((button) => {
-            const buttonContainer = new PIXI.Container();
-            const buttonBackground = new PIXI.Graphics();
-
-            // 초기 색상
-            const defaultTint = 0x444444;
-            const hoverTint = 0x666666;
-            const clickTint = 0x999999;
-
-            buttonBackground.beginFill(defaultTint);
-            buttonBackground.drawRoundedRect(0, 0, 200, 60, 10);
-            buttonBackground.endFill();
-
-            const buttonText = new PIXI.Text(button.label, {
-                fontFamily: 'Arial',
-                fontSize: 20,
-                fill: 0xffffff,
-                align: 'center',
-            });
-            buttonText.anchor.set(0.5);
-            buttonText.x = 100;
-            buttonText.y = 30;
-
-            buttonContainer.addChild(buttonBackground);
-            buttonContainer.addChild(buttonText);
-            buttonContainer.x = button.x;
-            buttonContainer.y = button.y;
-
-            buttonContainer.interactive = true;
-            buttonContainer.buttonMode = true;
-
-            // Hover 이벤트 처리
-            buttonContainer.on('pointerover', () => {
-                buttonBackground.tint = hoverTint;
-            });
-
-            // Hover 상태에서 벗어났을 때
-            buttonContainer.on('pointerout', () => {
-                buttonBackground.tint = defaultTint;
-            });
-
-            // 클릭 시 색상 변경 및 사운드 재생
-            buttonContainer.on('pointerdown', () => {
-                buttonBackground.tint = clickTint;
-                clickSound.currentTime = 0; // 사운드를 처음부터 재생
-                clickSound.play().catch((error) => {
-                    console.error('Click sound playback failed:', error);
-                });
-            });
-
-            // 클릭 후 상태 복원
-            buttonContainer.on('pointerup', () => {
-                buttonBackground.tint = hoverTint;
-            });
-
-            pixiApp.current.stage.addChild(buttonContainer);
-        });
-    }, [playIntroVideo, fetchPlayerData, startGame]);
-
-    const initPixiApp = useCallback(() => {
-        pixiApp.current = new PIXI.Application({
-            width: 880,
-            height: 528,
-            backgroundColor: 0x000000,
-        });
-
-        pixiContainer.current.appendChild(pixiApp.current.view);
-        console.log('Pixi Application initialized');
-
-        const background = PIXI.Sprite.from(initialBackground);
-        background.width = pixiApp.current.screen.width;
-        background.height = pixiApp.current.screen.height;
-        pixiApp.current.stage.addChild(background);
-
-        addPixiButtons();
-    }, [addPixiButtons]);
-
-    useEffect(() => {
-        initPixiApp();
-
-        return () => {
-            if (pixiApp.current) {
-                pixiApp.current.destroy(true, true);
-                pixiApp.current = null;
-            }
-        };
-    }, [initPixiApp]);
-
-    const resetPlayerData = async () => {
+    const resetPlayerData = useCallback(async () => {
         const token = localStorage.getItem('token');
         try {
             const response = await fetch('http://localhost:8080/api/players/reset', {
@@ -171,9 +73,27 @@ function DivineEchoGameUI() {
             console.error('Error during reset player data:', error.message || JSON.stringify(error));
             throw error;
         }
-    };
+    }, []);
 
-    const playIntroVideo = async () => {
+    const startGame = useCallback(() => {
+        if (!pixiApp.current) {
+            console.error('PIXI Application is not initialized');
+            return;
+        }
+
+        setShowStatusBar(false);
+
+        pixiApp.current.stage.removeChildren();
+
+        try {
+            gameCore.current = new DivineEchoGameCore(pixiApp.current);
+            console.log('Game started successfully');
+        } catch (error) {
+            console.error('Error initializing DivineEchoGameCore:', error);
+        }
+    }, []);
+
+    const playIntroVideo = useCallback(async () => {
         setShowStatusBar(false);
 
         try {
@@ -211,30 +131,118 @@ function DivineEchoGameUI() {
         };
 
         video.load();
-    };
+    }, [resetPlayerData, startGame]);
 
-    const startGame = () => {
-        if (!pixiApp.current) {
-            console.error('PIXI Application is not initialized');
-            return;
-        }
+    const addPixiButtons = useCallback(() => {
+        const buttons = [
+            { label: '처음부터하기', x: 150, y: 150, onClick: playIntroVideo },
+            { label: '이어하기', x: 450, y: 150, onClick: () => fetchPlayerData().then(startGame) },
+            { label: '상점', x: 150, y: 300, onClick: () => setShowStore(true) }, // 상점 버튼
+            { label: '인벤토리', x: 450, y: 300, onClick: () => alert('인벤토리로 이동') },
+            { label: '랭킹', x: 300, y: 450, onClick: () => alert('랭킹으로 이동') },
+        ];
 
-        setShowStatusBar(false);
+        buttons.forEach((button) => {
+            const buttonContainer = new PIXI.Container();
+            const buttonBackground = new PIXI.Graphics();
 
-        pixiApp.current.stage.removeChildren();
+            const defaultColor = 0x444444;
+            const hoverColor = 0x666666;
+            const clickColor = 0x999999;
 
-        try {
-            gameCore.current = new DivineEchoGameCore(pixiApp.current);
-            console.log('Game started successfully');
-        } catch (error) {
-            console.error('Error initializing DivineEchoGameCore:', error);
-        }
-    };
+            buttonBackground.beginFill(defaultColor);
+            buttonBackground.drawRoundedRect(0, 0, 200, 60, 10);
+            buttonBackground.endFill();
+
+            const buttonText = new PIXI.Text(button.label, {
+                fontFamily: 'Arial',
+                fontSize: 20,
+                fill: 0xffffff,
+                align: 'center',
+            });
+            buttonText.anchor.set(0.5);
+            buttonText.x = 100;
+            buttonText.y = 30;
+
+            buttonContainer.addChild(buttonBackground);
+            buttonContainer.addChild(buttonText);
+            buttonContainer.x = button.x;
+            buttonContainer.y = button.y;
+
+            buttonContainer.interactive = true;
+            buttonContainer.buttonMode = true;
+
+            buttonContainer.on('pointerover', () => {
+                buttonBackground.clear();
+                buttonBackground.beginFill(hoverColor);
+                buttonBackground.drawRoundedRect(0, 0, 200, 60, 10);
+                buttonBackground.endFill();
+            });
+
+            buttonContainer.on('pointerout', () => {
+                buttonBackground.clear();
+                buttonBackground.beginFill(defaultColor);
+                buttonBackground.drawRoundedRect(0, 0, 200, 60, 10);
+                buttonBackground.endFill();
+            });
+
+            buttonContainer.on('pointerdown', () => {
+                buttonBackground.clear();
+                buttonBackground.beginFill(clickColor);
+                buttonBackground.drawRoundedRect(0, 0, 200, 60, 10);
+                buttonBackground.endFill();
+
+                if (hoverSound) {
+                    hoverSound.currentTime = 0;
+                    hoverSound.play().catch((error) => {
+                        console.error('Failed to play click sound:', error);
+                    });
+                }
+
+                button.onClick();
+            });
+
+            pixiApp.current.stage.addChild(buttonContainer);
+        });
+    }, [playIntroVideo, fetchPlayerData, startGame, hoverSound]);
+
+    const initPixiApp = useCallback(() => {
+        pixiApp.current = new PIXI.Application({
+            width: 880,
+            height: 528,
+            backgroundColor: 0x000000,
+        });
+
+        pixiContainer.current.appendChild(pixiApp.current.view);
+        console.log('Pixi Application initialized');
+
+        const background = PIXI.Sprite.from(initialBackground);
+        background.width = pixiApp.current.screen.width;
+        background.height = pixiApp.current.screen.height;
+        pixiApp.current.stage.addChild(background);
+
+        addPixiButtons();
+    }, [addPixiButtons]);
+
+    useEffect(() => {
+        initPixiApp();
+
+        return () => {
+            if (pixiApp.current) {
+                pixiApp.current.destroy(true, true);
+                pixiApp.current = null;
+            }
+        };
+    }, [initPixiApp]);
 
     const handleLogout = () => {
         localStorage.removeItem('token');
         setIsLoggedIn(false);
     };
+
+    if (showStore) {
+        return <Store onBack={() => setShowStore(false)} />; // Store 렌더링
+    }
 
     return isLoggedIn ? (
         <div className="game-container">

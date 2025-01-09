@@ -1,153 +1,150 @@
 import React, { useEffect, useState } from 'react';
+import StatusBar from '../status/StatusBar'; // StatusBar 가져오기
 import './Store.css';
 
-function Store({ onBack }) {
+function Store({ onBack, playerData, onLogout }) {
     const [items, setItems] = useState([]);
     const [category, setCategory] = useState('SKIN');
-    const [playerData, setPlayerData] = useState(null);
-    const [cart, setCart] = useState([]);
     const [ownedItems, setOwnedItems] = useState([]);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [selectedItem, setSelectedItem] = useState(null);
+
+    const ITEMS_PER_PAGE = 8;
 
     useEffect(() => {
         const fetchItems = async () => {
             try {
-                const response = await fetch('http://localhost:8080/api/items');
+                const token = localStorage.getItem('token'); // JWT 토큰 가져오기
+                const response = await fetch('http://localhost:8080/api/items', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`, // 토큰 추가
+                    },
+                });
                 if (response.ok) {
                     const data = await response.json();
                     setItems(data);
                 } else {
-                    console.error('Failed to fetch items');
+                    console.error('Failed to fetch items', response.status, response.statusText);
                 }
             } catch (error) {
                 console.error('Error fetching items:', error.message || JSON.stringify(error));
             }
         };
 
-        const fetchPlayerData = async () => {
-            const token = localStorage.getItem('token');
-            try {
-                const response = await fetch('http://localhost:8080/api/players/load', {
-                    method: 'GET',
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                        'Content-Type': 'application/json',
-                    },
-                });
-                if (response.ok) {
-                    const data = await response.json();
-                    setPlayerData(data);
-                    setOwnedItems(data.ownedItems || []); // 보유 중인 아이템 설정
-                } else {
-                    console.error('Failed to fetch player data');
-                }
-            } catch (error) {
-                console.error('Error fetching player data:', error.message || JSON.stringify(error));
-            }
-        };
-
         fetchItems();
-        fetchPlayerData();
-    }, []);
 
-    const handlePurchase = async () => {
-        const token = localStorage.getItem('token');
-        try {
-            for (const item of cart) {
-                const response = await fetch(
-                    `http://localhost:8080/api/players/purchase-item?itemId=${item.id}&currencyType=${item.currencyType}`,
-                    {
-                        method: 'POST',
-                        headers: {
-                            Authorization: `Bearer ${token}`,
-                            'Content-Type': 'application/json',
-                        },
-                    }
-                );
-                if (response.ok) {
-                    const updatedPlayer = await response.json();
-                    setPlayerData(updatedPlayer);
-                    setOwnedItems(updatedPlayer.ownedItems || []);
-                    alert(`${item.name} 구매 성공!`);
-                } else {
-                    alert(`${item.name} 구매 실패`);
-                }
-            }
-            setCart([]); // 장바구니 비우기
-        } catch (error) {
-            console.error('Error during purchase:', error.message || JSON.stringify(error));
+        // ownedItems 데이터 설정
+        if (playerData && playerData.ownedItems) {
+            setOwnedItems(playerData.ownedItems);
+        } else {
+            setOwnedItems([]); // 기본값 설정
         }
-    };
-
-    const handleAddToCart = (item, currencyType) => {
-        if (cart.some((cartItem) => cartItem.id === item.id)) {
-            alert('이미 장바구니에 있는 아이템입니다.');
-            return;
-        }
-        setCart([...cart, { ...item, currencyType }]);
-    };
+    }, [playerData]);
 
     const filteredItems = items.filter((item) => item.itemType === category);
-    const nonOwnedItems = filteredItems.filter((item) => !ownedItems.some((ownedItem) => ownedItem.id === item.id));
+    const paginatedItems = filteredItems.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
+    const totalPages = Math.ceil(filteredItems.length / ITEMS_PER_PAGE);
+
+    const handleAddToCart = (item, currencyType) => {
+        if (playerData[currencyType.toLowerCase()] < item[`required${currencyType}`]) {
+            alert(`${currencyType}가 부족합니다.`);
+            return;
+        }
+        alert(`${item.name} 구매 성공!`);
+        setSelectedItem(item);
+    };
 
     if (!playerData) return <div>Loading...</div>;
 
     return (
         <div className="store-container">
-            <div className="store-header">
-                <h1>Store</h1>
-                <div className="player-stats">
-                    <h3>Gold: {playerData.gold}</h3>
-                    <h3>Diamonds: {playerData.diamond}</h3>
-                </div>
-            </div>
-            <div className="store-menu">
-                <button onClick={() => setCategory('SKIN')}>Skins</button>
-                <button onClick={() => setCategory('SKILL')}>Skills</button>
+            {/* 상단 상태 표시줄 */}
+            <StatusBar player={playerData} onLogout={onLogout} />
+
+            {/* 카테고리 탭 */}
+            <div className="store-tabs">
+                <button
+                    className={category === 'SKIN' ? 'active-tab' : ''}
+                    onClick={() => {
+                        setCategory('SKIN');
+                        setCurrentPage(1);
+                    }}
+                >
+                    Skins
+                </button>
+                <button
+                    className={category === 'SKILL' ? 'active-tab' : ''}
+                    onClick={() => {
+                        setCategory('SKILL');
+                        setCurrentPage(1);
+                    }}
+                >
+                    Skills
+                </button>
                 <button onClick={onBack}>Back</button>
             </div>
-            <div className="store-items">
-                <h2>{category === 'SKIN' ? 'Skins' : 'Skills'}</h2>
-                {nonOwnedItems.map((item) => (
-                    <div key={item.id} className="store-item">
-                        <h3>{item.name}</h3>
-                        <p>Gold: {item.requiredGold > 0 ? item.requiredGold : 'N/A'}</p>
-                        <p>Diamond: {item.requiredDiamond > 0 ? item.requiredDiamond : 'N/A'}</p>
-                        <button
-                            onClick={() => handleAddToCart(item, 'GOLD')}
-                            disabled={playerData.gold < item.requiredGold || item.requiredGold === 0}
+
+            {/* 아이템 미리보기 및 목록 */}
+            <div className="store-content">
+                {/* 선택된 아이템 미리보기 */}
+                <div className="item-preview">
+                    {selectedItem ? (
+                        <div>
+                            <img src={selectedItem.imageUrl} alt={selectedItem.name} className="preview-image" />
+                            <h3>{selectedItem.name}</h3>
+                            <p>Gold: {selectedItem.requiredGold}</p>
+                            <p>Diamond: {selectedItem.requiredDiamond}</p>
+                        </div>
+                    ) : (
+                        <p>아이템을 선택하세요</p>
+                    )}
+                </div>
+
+                {/* 아이템 목록 */}
+                <div className="store-items">
+                    {paginatedItems.map((item) => (
+                        <div
+                            key={item.id}
+                            className={`store-item ${ownedItems.some((owned) => owned.id === item.id) ? 'owned' : ''}`}
                         >
-                            Add to Cart (Gold)
-                        </button>
-                        <button
-                            onClick={() => handleAddToCart(item, 'DIAMOND')}
-                            disabled={playerData.diamond < item.requiredDiamond || item.requiredDiamond === 0}
-                        >
-                            Add to Cart (Diamond)
-                        </button>
-                    </div>
-                ))}
-                {ownedItems.map((item) => (
-                    <div key={item.id} className="store-item owned">
-                        <h3>{item.name} (Owned)</h3>
-                    </div>
-                ))}
+                            <img src={item.imageUrl} alt={item.name} className="item-image" />
+                            <h3>{item.name}</h3>
+                            <p>Gold: {item.requiredGold}</p>
+                            <p>Diamond: {item.requiredDiamond}</p>
+                            <button
+                                onClick={() => handleAddToCart(item, 'Gold')}
+                                disabled={playerData.gold < item.requiredGold}
+                            >
+                                Buy with Gold
+                            </button>
+                            <button
+                                onClick={() => handleAddToCart(item, 'Diamond')}
+                                disabled={playerData.diamond < item.requiredDiamond}
+                            >
+                                Buy with Diamond
+                            </button>
+                        </div>
+                    ))}
+                </div>
             </div>
-            <div className="store-cart">
-                <h2>Cart</h2>
-                {cart.length > 0 ? (
-                    <div>
-                        {cart.map((item, index) => (
-                            <div key={index} className="cart-item">
-                                <span>
-                                    {item.name} ({item.currencyType})
-                                </span>
-                            </div>
-                        ))}
-                        <button onClick={handlePurchase}>Purchase</button>
-                    </div>
-                ) : (
-                    <p>Cart is empty</p>
-                )}
+
+            {/* 페이지네이션 */}
+            <div className="pagination">
+                <button onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))} disabled={currentPage === 1}>
+                    &lt;
+                </button>
+                <span>
+                    Page {currentPage} of {totalPages}
+                </span>
+                <button
+                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                >
+                    &gt;
+                </button>
             </div>
         </div>
     );
