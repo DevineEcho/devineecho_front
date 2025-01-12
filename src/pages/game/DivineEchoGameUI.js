@@ -6,10 +6,10 @@ import buttonClickSoundFile from './sounds/ButtonClickSound.mp3';
 import DivineEchoGameCore from './DivineEchoGameCore';
 import StatusBar from '../status/StatusBar';
 import Login from '../login/Login';
-import Store from '../store/Store'; // Store 컴포넌트 import
+import Store from '../store/Store';
 import './DivineEchoGameUI.css';
 
-function DivineEchoGameUI() {
+function DivineEchoGameUI({ onOpenStore }) {
     const pixiContainer = useRef(null);
     const pixiApp = useRef(null);
     const gameCore = useRef(null);
@@ -18,7 +18,6 @@ function DivineEchoGameUI() {
     const [playerData, setPlayerData] = useState(null);
     const [showStatusBar, setShowStatusBar] = useState(true);
     const [isLoggedIn, setIsLoggedIn] = useState(true);
-    const [showStore, setShowStore] = useState(false); // 상점 상태 추가
 
     useEffect(() => {
         const sound = new Audio(buttonClickSoundFile);
@@ -137,7 +136,7 @@ function DivineEchoGameUI() {
         const buttons = [
             { label: '처음부터하기', x: 150, y: 150, onClick: playIntroVideo },
             { label: '이어하기', x: 450, y: 150, onClick: () => fetchPlayerData().then(startGame) },
-            { label: '상점', x: 150, y: 300, onClick: () => setShowStore(true) }, // 상점 버튼
+            { label: '상점', x: 150, y: 300, onClick: onOpenStore }, // onOpenStore 연결
             { label: '인벤토리', x: 450, y: 300, onClick: () => alert('인벤토리로 이동') },
             { label: '랭킹', x: 300, y: 450, onClick: () => alert('랭킹으로 이동') },
         ];
@@ -204,7 +203,7 @@ function DivineEchoGameUI() {
 
             pixiApp.current.stage.addChild(buttonContainer);
         });
-    }, [playIntroVideo, fetchPlayerData, startGame, hoverSound]);
+    }, [playIntroVideo, fetchPlayerData, startGame, hoverSound, onOpenStore]);
 
     const initPixiApp = useCallback(() => {
         pixiApp.current = new PIXI.Application({
@@ -239,10 +238,6 @@ function DivineEchoGameUI() {
         localStorage.removeItem('token');
         setIsLoggedIn(false);
     };
-
-    if (showStore) {
-        return <Store onBack={() => setShowStore(false)} />; // Store 렌더링
-    }
 
     return isLoggedIn ? (
         <div className="game-container">

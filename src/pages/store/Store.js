@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import StatusBar from '../status/StatusBar'; // StatusBar 가져오기
+import StatusBar from '../status/StatusBar';
 import './Store.css';
 
-function Store({ onBack, playerData, onLogout }) {
+function Store({ onBack, playerData, onLogout, pixiContainer }) {
     const [items, setItems] = useState([]);
     const [category, setCategory] = useState('SKIN');
     const [ownedItems, setOwnedItems] = useState([]);
@@ -12,18 +12,37 @@ function Store({ onBack, playerData, onLogout }) {
     const ITEMS_PER_PAGE = 8;
 
     useEffect(() => {
+        console.log('Items loaded:', items);
+    }, [items]);
+
+    useEffect(() => {
+        console.log('Store component rendered!');
+
+        if (pixiContainer && pixiContainer.current) {
+            pixiContainer.current.style.display = 'none';
+        }
+
+        return () => {
+            if (pixiContainer && pixiContainer.current) {
+                pixiContainer.current.style.display = 'block';
+            }
+        };
+    }, [pixiContainer]);
+
+    useEffect(() => {
         const fetchItems = async () => {
             try {
-                const token = localStorage.getItem('token'); // JWT 토큰 가져오기
+                const token = localStorage.getItem('token');
                 const response = await fetch('http://localhost:8080/api/items', {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
-                        Authorization: `Bearer ${token}`, // 토큰 추가
+                        Authorization: `Bearer ${token}`,
                     },
                 });
                 if (response.ok) {
                     const data = await response.json();
+                    console.log('Fetched items:', data);
                     setItems(data);
                 } else {
                     console.error('Failed to fetch items', response.status, response.statusText);
@@ -35,16 +54,19 @@ function Store({ onBack, playerData, onLogout }) {
 
         fetchItems();
 
-        // ownedItems 데이터 설정
         if (playerData && playerData.ownedItems) {
             setOwnedItems(playerData.ownedItems);
         } else {
-            setOwnedItems([]); // 기본값 설정
+            setOwnedItems([]);
         }
     }, [playerData]);
 
     const filteredItems = items.filter((item) => item.itemType === category);
     const paginatedItems = filteredItems.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
+    useEffect(() => {
+        console.log('Filtered items:', filteredItems);
+    }, [filteredItems]);
 
     const totalPages = Math.ceil(filteredItems.length / ITEMS_PER_PAGE);
 
@@ -61,10 +83,8 @@ function Store({ onBack, playerData, onLogout }) {
 
     return (
         <div className="store-container">
-            {/* 상단 상태 표시줄 */}
             <StatusBar player={playerData} onLogout={onLogout} />
 
-            {/* 카테고리 탭 */}
             <div className="store-tabs">
                 <button
                     className={category === 'SKIN' ? 'active-tab' : ''}
@@ -87,9 +107,7 @@ function Store({ onBack, playerData, onLogout }) {
                 <button onClick={onBack}>Back</button>
             </div>
 
-            {/* 아이템 미리보기 및 목록 */}
             <div className="store-content">
-                {/* 선택된 아이템 미리보기 */}
                 <div className="item-preview">
                     {selectedItem ? (
                         <div>
@@ -103,7 +121,6 @@ function Store({ onBack, playerData, onLogout }) {
                     )}
                 </div>
 
-                {/* 아이템 목록 */}
                 <div className="store-items">
                     {paginatedItems.map((item) => (
                         <div
@@ -131,7 +148,6 @@ function Store({ onBack, playerData, onLogout }) {
                 </div>
             </div>
 
-            {/* 페이지네이션 */}
             <div className="pagination">
                 <button onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))} disabled={currentPage === 1}>
                     &lt;
