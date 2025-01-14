@@ -10,7 +10,7 @@
 }
 
 .gameboy-screen {
-    pointer-events: auto; /* pointer-events 조정 */
+    pointer-events: auto !important;
     position: absolute;
     top: 18%;
     left: 24%;
@@ -19,8 +19,8 @@
     margin: 50px 10px;
     display: flex;
     justify-content: center;
-    align-items: flex-start; /* Store 상단부터 표시 */
-    overflow-y: auto; /* 콘텐츠 스크롤 가능 */
+    align-items: center;
+    overflow: visible;
     z-index: 1;
 }
 

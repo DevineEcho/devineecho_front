@@ -20,27 +20,19 @@ function Main() {
     const handleLoginSuccess = () => {
         setIsLoggedIn(true);
     };
+
     return (
         <div className="gameboy-container">
             <img src={GameboyImage} alt="Game Boy" className="gameboy-image" />
             <div className="gameboy-screen">
                 {isLoggedIn ? (
                     showStore ? (
-                        <>
-                            {console.log('Rendering Store Component')}
-                            <Store onBack={() => setShowStore(false)} pixiContainer={pixiContainer} />
-                        </>
+                        <Store onBack={() => setShowStore(false)} pixiContainer={pixiContainer} />
                     ) : (
-                        <>
-                            {console.log('Rendering DivineEchoGameUI Component')}
-                            <DivineEchoGameUI onOpenStore={() => setShowStore(true)} pixiContainer={pixiContainer} />
-                        </>
+                        <DivineEchoGameUI onOpenStore={() => setShowStore(true)} pixiContainer={pixiContainer} />
                     )
                 ) : (
-                    <>
-                        {console.log('Rendering Login Component')}
-                        <Login onLoginSuccess={handleLoginSuccess} />
-                    </>
+                    <Login onLoginSuccess={handleLoginSuccess} />
                 )}
             </div>
         </div>

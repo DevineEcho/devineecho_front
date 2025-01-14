@@ -1,27 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import StatusBar from '../status/StatusBar';
 import './Store.css';
 
 function Store({ onBack, playerData, onLogout, pixiContainer }) {
     const [items, setItems] = useState([]);
-    const [category, setCategory] = useState('SKIN');
-    const [ownedItems, setOwnedItems] = useState([]);
+    const [category, setCategory] = useState('ALL');
     const [currentPage, setCurrentPage] = useState(1);
-    const [selectedItem, setSelectedItem] = useState(null);
+    const ITEMS_PER_PAGE = 6;
 
-    const ITEMS_PER_PAGE = 8;
-
+    // Pixi 컨테이너 숨기기
     useEffect(() => {
-        console.log('Items loaded:', items);
-    }, [items]);
-
-    useEffect(() => {
-        console.log('Store component rendered!');
-
         if (pixiContainer && pixiContainer.current) {
             pixiContainer.current.style.display = 'none';
         }
-
         return () => {
             if (pixiContainer && pixiContainer.current) {
                 pixiContainer.current.style.display = 'block';
@@ -29,6 +19,7 @@ function Store({ onBack, playerData, onLogout, pixiContainer }) {
         };
     }, [pixiContainer]);
 
+    // 아이템 가져오기
     useEffect(() => {
         const fetchItems = async () => {
             try {
@@ -40,9 +31,9 @@ function Store({ onBack, playerData, onLogout, pixiContainer }) {
                         Authorization: `Bearer ${token}`,
                     },
                 });
+
                 if (response.ok) {
                     const data = await response.json();
-                    console.log('Fetched items:', data);
                     setItems(data);
                 } else {
                     console.error('Failed to fetch items', response.status, response.statusText);
@@ -53,104 +44,62 @@ function Store({ onBack, playerData, onLogout, pixiContainer }) {
         };
 
         fetchItems();
+    }, []);
 
-        if (playerData && playerData.ownedItems) {
-            setOwnedItems(playerData.ownedItems);
-        } else {
-            setOwnedItems([]);
-        }
-    }, [playerData]);
+    // 카테고리별 필터링
+    const filteredItems = category === 'ALL' ? items : items.filter((item) => item.itemType === category);
 
-    const filteredItems = items.filter((item) => item.itemType === category);
     const paginatedItems = filteredItems.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
-
-    useEffect(() => {
-        console.log('Filtered items:', filteredItems);
-    }, [filteredItems]);
 
     const totalPages = Math.ceil(filteredItems.length / ITEMS_PER_PAGE);
 
-    const handleAddToCart = (item, currencyType) => {
-        if (playerData[currencyType.toLowerCase()] < item[`required${currencyType}`]) {
-            alert(`${currencyType}가 부족합니다.`);
-            return;
-        }
-        alert(`${item.name} 구매 성공!`);
-        setSelectedItem(item);
-    };
-
-    if (!playerData) return <div>Loading...</div>;
-
     return (
-        <div className="store-container">
-            <StatusBar player={playerData} onLogout={onLogout} />
+        <div className="new-store-container">
+            <header className="store-header">
+                <h1>Store</h1>
+                <button className="back-button" onClick={onBack}>
+                    Back
+                </button>
+            </header>
 
             <div className="store-tabs">
-                <button
-                    className={category === 'SKIN' ? 'active-tab' : ''}
-                    onClick={() => {
-                        setCategory('SKIN');
-                        setCurrentPage(1);
-                    }}
-                >
+                <button className={category === 'ALL' ? 'active-tab' : ''} onClick={() => setCategory('ALL')}>
+                    All
+                </button>
+                <button className={category === 'SKIN' ? 'active-tab' : ''} onClick={() => setCategory('SKIN')}>
                     Skins
                 </button>
-                <button
-                    className={category === 'SKILL' ? 'active-tab' : ''}
-                    onClick={() => {
-                        setCategory('SKILL');
-                        setCurrentPage(1);
-                    }}
-                >
+                <button className={category === 'SKILL' ? 'active-tab' : ''} onClick={() => setCategory('SKILL')}>
                     Skills
                 </button>
-                <button onClick={onBack}>Back</button>
+                <button
+                    className={category === 'EQUIPMENT' ? 'active-tab' : ''}
+                    onClick={() => setCategory('EQUIPMENT')}
+                >
+                    Equipment
+                </button>
             </div>
 
-            <div className="store-content">
-                <div className="item-preview">
-                    {selectedItem ? (
-                        <div>
-                            <img src={selectedItem.imageUrl} alt={selectedItem.name} className="preview-image" />
-                            <h3>{selectedItem.name}</h3>
-                            <p>Gold: {selectedItem.requiredGold}</p>
-                            <p>Diamond: {selectedItem.requiredDiamond}</p>
-                        </div>
-                    ) : (
-                        <p>아이템을 선택하세요</p>
-                    )}
-                </div>
-
-                <div className="store-items">
-                    {paginatedItems.map((item) => (
-                        <div
-                            key={item.id}
-                            className={`store-item ${ownedItems.some((owned) => owned.id === item.id) ? 'owned' : ''}`}
-                        >
-                            <img src={item.imageUrl} alt={item.name} className="item-image" />
-                            <h3>{item.name}</h3>
-                            <p>Gold: {item.requiredGold}</p>
-                            <p>Diamond: {item.requiredDiamond}</p>
-                            <button
-                                onClick={() => handleAddToCart(item, 'Gold')}
-                                disabled={playerData.gold < item.requiredGold}
-                            >
-                                Buy with Gold
-                            </button>
-                            <button
-                                onClick={() => handleAddToCart(item, 'Diamond')}
-                                disabled={playerData.diamond < item.requiredDiamond}
-                            >
-                                Buy with Diamond
-                            </button>
-                        </div>
-                    ))}
-                </div>
+            <div className="store-items">
+                {paginatedItems.map((item) => (
+                    <div key={item.id} className="store-item">
+                        <img
+                            src={item.imageUrl || 'https://via.placeholder.com/150'}
+                            alt={item.name}
+                            className="item-image"
+                        />
+                        <h3>{item.name}</h3>
+                        <p>Gold: {item.requiredGold}</p>
+                        <p>Diamond: {item.requiredDiamond}</p>
+                        <button>Buy</button>
+                    </div>
+                ))}
+                {paginatedItems.length === 0 && <p>No items found</p>}
             </div>
 
             <div className="pagination">
                 <button onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))} disabled={currentPage === 1}>
-                    &lt;
+                    &lt; Previous
                 </button>
                 <span>
                     Page {currentPage} of {totalPages}
@@ -159,7 +108,7 @@ function Store({ onBack, playerData, onLogout, pixiContainer }) {
                     onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
                     disabled={currentPage === totalPages}
                 >
-                    &gt;
+                    Next &gt;
                 </button>
             </div>
         </div>
