@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import StatusBar from '../status/StatusBar'; // 스테이터스바 추가
 import './Store.css';
 
 function Store({ onBack, playerData, onLogout, pixiContainer }) {
@@ -55,6 +56,9 @@ function Store({ onBack, playerData, onLogout, pixiContainer }) {
 
     return (
         <div className="new-store-container">
+            {/* 스테이터스 바 추가 */}
+            <StatusBar player={playerData} onLogout={onLogout} />
+
             <header className="store-header">
                 <h1>Store</h1>
                 <button className="back-button" onClick={onBack}>
