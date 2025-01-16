@@ -134,11 +134,11 @@ function DivineEchoGameUI({ onOpenStore }) {
 
     const addPixiButtons = useCallback(() => {
         const buttons = [
-            { label: '처음부터하기', x: 150, y: 100, onClick: playIntroVideo },
-            { label: '이어하기', x: 400, y: 100, onClick: () => fetchPlayerData().then(startGame) },
-            { label: '상점', x: 150, y: 250, onClick: onOpenStore },
-            { label: '인벤토리', x: 400, y: 250, onClick: () => alert('인벤토리로 이동') },
-            { label: '랭킹', x: 275, y: 400, onClick: () => alert('랭킹으로 이동') },
+            { label: '처음부터하기', x: 200, y: 140, onClick: playIntroVideo },
+            { label: '이어하기', x: 450, y: 140, onClick: () => fetchPlayerData().then(startGame) },
+            { label: '상점', x: 200, y: 280, onClick: onOpenStore },
+            { label: '인벤토리', x: 450, y: 280, onClick: () => alert('인벤토리로 이동') },
+            { label: '랭킹', x: 450, y: 400, onClick: () => alert('랭킹으로 이동') },
         ];
 
         buttons.forEach((button) => {

@@ -405,12 +405,14 @@ class DivineEchoGameCore {
         const optionWidth = this.app.view.width / 3;
         const optionHeight = this.app.view.height / 2;
 
+        const adjustedY = this.app.view.height / 6 + 50;
+
         skillOptions.forEach((option, index) => {
             const xPosition = index * optionWidth;
 
             const optionContainer = new PIXI.Container();
             optionContainer.x = xPosition;
-            optionContainer.y = this.app.view.height / 6;
+            optionContainer.y = adjustedY;
             levelUpContainer.addChild(optionContainer);
 
             const optionBg = new PIXI.Graphics();
@@ -507,7 +509,7 @@ class DivineEchoGameCore {
         const optionWidth = this.app.view.width / 3;
         const optionHeight = this.app.view.height / 2;
 
-        let upgradeCount = 0;
+        const adjustedY = this.app.view.height / 6 + 50;
 
         const enemyOptions = [
             {
@@ -539,26 +541,12 @@ class DivineEchoGameCore {
             },
         ];
 
-        const handleUpgradeSelection = (option) => {
-            option.levelUpEffect();
-            upgradeCount++;
-
-            if (doubleUpgrade && upgradeCount < 2) {
-                enemyLevelUpContainer.visible = false;
-                this.showEnemyLevelUpUI(false);
-            } else {
-                this.uiContainer.removeChild(enemyLevelUpContainer);
-                this.resumeGame();
-                this.resumeHallucinationTimer();
-            }
-        };
-
         enemyOptions.forEach((option, index) => {
             const xPosition = index * optionWidth;
 
             const optionContainer = new PIXI.Container();
             optionContainer.x = xPosition;
-            optionContainer.y = this.app.view.height / 6;
+            optionContainer.y = adjustedY;
             enemyLevelUpContainer.addChild(optionContainer);
 
             const optionBg = new PIXI.Graphics();
@@ -605,7 +593,10 @@ class DivineEchoGameCore {
             selectButton.buttonMode = true;
 
             selectButton.on('pointerdown', () => {
-                handleUpgradeSelection(option);
+                option.levelUpEffect();
+                this.uiContainer.removeChild(enemyLevelUpContainer);
+                this.resumeGame();
+                this.resumeHallucinationTimer();
             });
 
             optionContainer.addChild(selectButton);
@@ -740,10 +731,10 @@ class DivineEchoGameCore {
         const level = this.skills.saintAura.level;
         if (level === 0 || this.saintAuraActive) return;
 
-        const baseRadius = 250;
-        const levelModifiers = [1, 1.2, 1.2, 1.4, 2];
-        const durationOn = level >= 3 ? 3000 : 2000;
-        const durationOff = level >= 3 ? 1500 : 2000;
+        const baseRadius = 180;
+        const levelModifiers = [1, 1.2, 1.2, 1.4, 1.5];
+        const durationOn = level >= 3 ? 1000 : 800;
+        const durationOff = level >= 3 ? 8000 : 10000;
         const radius = baseRadius * levelModifiers[Math.min(level - 1, 4)];
         const damagePerLevel = [3, 5, 7, 10, 10];
         const damage = damagePerLevel[Math.min(level - 1, 4)];
@@ -1126,6 +1117,8 @@ class DivineEchoGameCore {
 
         this.boss.damage = 15 * Math.pow(1.25, this.stage - 1);
 
+        this.bossSpeed = this.playerSpeed * 0.2;
+
         this.camera.addChild(this.boss);
         this.isBossSpawned = true;
 
@@ -1343,7 +1336,7 @@ class DivineEchoGameCore {
     }
 
     async saveStageData(playerData) {
-        const token = localStorage.getItem('token'); // 인증 토큰
+        const token = localStorage.getItem('token');
         try {
             const response = await fetch('http://localhost:8080/api/players/stageClear', {
                 method: 'POST',
@@ -1397,8 +1390,9 @@ class DivineEchoGameCore {
             ],
         };
 
-        // 스테이지 데이터 저장 (this.saveStageData로 호출)
         this.saveStageData(playerData);
+
+        this.stage += 1;
 
         this.timer = 120;
         this.stageComplete = false;
@@ -1471,6 +1465,10 @@ class DivineEchoGameCore {
             return;
         }
 
+        const centerX = this.app.view.width / 2;
+        const centerY = this.app.view.height / 2;
+        const adjustedCenterY = centerY - 30;
+
         const stageText = new PIXI.Text(text, {
             fontFamily: 'ChosunCentennial',
             fontSize: 80,
@@ -1480,8 +1478,8 @@ class DivineEchoGameCore {
             strokeThickness: 6,
         });
         stageText.anchor.set(0.5);
-        stageText.x = this.app.view.width / 2;
-        stageText.y = this.app.view.height / 2 - 100;
+        stageText.x = centerX;
+        stageText.y = adjustedCenterY;
 
         this.uiContainer.addChild(stageText);
 
