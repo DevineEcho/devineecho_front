@@ -18,41 +18,12 @@ function DivineEchoGameUI({ onOpenStore }) {
     const [playerData, setPlayerData] = useState(null);
     const [showStatusBar, setShowStatusBar] = useState(true);
     const [isLoggedIn, setIsLoggedIn] = useState(true);
+    const [isStoreOpen, setIsStoreOpen] = useState(false);
 
     useEffect(() => {
         const sound = new Audio(buttonClickSoundFile);
         setHoverSound(sound);
     }, []);
-
-    const fetchPlayerData = useCallback(async () => {
-        const token = localStorage.getItem('token');
-        if (!token) return;
-
-        try {
-            const response = await fetch('http://localhost:8080/api/players/load', {
-                method: 'GET',
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-            });
-            if (response.ok) {
-                const data = await response.json();
-                setPlayerData(data);
-                console.log('Player data loaded:', data);
-            } else {
-                console.error('Failed to fetch player data');
-            }
-        } catch (error) {
-            console.error('Error during fetch player data:', error.message || JSON.stringify(error));
-        }
-    }, []);
-
-    useEffect(() => {
-        if (isLoggedIn) {
-            fetchPlayerData();
-        }
-    }, [isLoggedIn, fetchPlayerData]);
 
     const resetPlayerData = useCallback(async () => {
         const token = localStorage.getItem('token');
@@ -81,7 +52,6 @@ function DivineEchoGameUI({ onOpenStore }) {
         }
 
         setShowStatusBar(false);
-
         pixiApp.current.stage.removeChildren();
 
         try {
@@ -132,11 +102,48 @@ function DivineEchoGameUI({ onOpenStore }) {
         video.load();
     }, [resetPlayerData, startGame]);
 
+    const fetchPlayerData = useCallback(async () => {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        try {
+            const response = await fetch('http://localhost:8080/api/players/load', {
+                method: 'GET',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setPlayerData(data);
+                console.log('Player data loaded:', data);
+            } else {
+                console.error('Failed to fetch player data');
+            }
+        } catch (error) {
+            console.error('Error during fetch player data:', error.message || JSON.stringify(error));
+        }
+    }, []);
+
+    useEffect(() => {
+        if (isLoggedIn) {
+            fetchPlayerData();
+        }
+    }, [isLoggedIn, fetchPlayerData]);
+
+    const handleOpenStore = useCallback(() => {
+        setIsStoreOpen(true);
+        if (pixiContainer.current) {
+            pixiContainer.current.style.display = 'none';
+        }
+    }, []);
+
     const addPixiButtons = useCallback(() => {
         const buttons = [
             { label: '처음부터하기', x: 200, y: 140, onClick: playIntroVideo },
             { label: '이어하기', x: 450, y: 140, onClick: () => fetchPlayerData().then(startGame) },
-            { label: '상점', x: 200, y: 280, onClick: onOpenStore },
+            { label: '상점', x: 200, y: 280, onClick: handleOpenStore },
             { label: '인벤토리', x: 450, y: 280, onClick: () => alert('인벤토리로 이동') },
             { label: '랭킹', x: 450, y: 400, onClick: () => alert('랭킹으로 이동') },
         ];
@@ -203,17 +210,19 @@ function DivineEchoGameUI({ onOpenStore }) {
 
             pixiApp.current.stage.addChild(buttonContainer);
         });
-    }, [playIntroVideo, fetchPlayerData, startGame, hoverSound, onOpenStore]);
+    }, [hoverSound, playIntroVideo, fetchPlayerData, startGame, handleOpenStore]);
 
     const initPixiApp = useCallback(() => {
-        pixiApp.current = new PIXI.Application({
-            width: 880,
-            height: 528,
-            backgroundColor: 0x000000,
-        });
+        if (!pixiApp.current) {
+            pixiApp.current = new PIXI.Application({
+                width: 880,
+                height: 528,
+                backgroundColor: 0x000000,
+            });
+            pixiContainer.current.appendChild(pixiApp.current.view);
+        }
 
-        pixiContainer.current.appendChild(pixiApp.current.view);
-        console.log('Pixi Application initialized');
+        pixiApp.current.stage.removeChildren();
 
         const background = PIXI.Sprite.from(initialBackground);
         background.width = pixiApp.current.screen.width;
@@ -242,7 +251,15 @@ function DivineEchoGameUI({ onOpenStore }) {
     return isLoggedIn ? (
         <div className="game-container">
             {showStatusBar && playerData && <StatusBar player={playerData} onLogout={handleLogout} />}
-            <div ref={pixiContainer} className="pixi-container" />
+            <div style={{ display: isStoreOpen ? 'none' : 'block' }} className="pixi-container" ref={pixiContainer} />
+            {isStoreOpen && (
+                <Store
+                    onBack={() => setIsStoreOpen(false)}
+                    playerData={playerData}
+                    onLogout={handleLogout}
+                    pixiContainer={pixiContainer}
+                />
+            )}
         </div>
     ) : (
         <Login onLoginSuccess={() => setIsLoggedIn(true)} />

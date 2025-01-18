@@ -1,26 +1,26 @@
 import React, { useEffect, useState } from 'react';
-import StatusBar from '../status/StatusBar'; // 스테이터스바 추가
 import './Store.css';
 
-function Store({ onBack, playerData, onLogout, pixiContainer }) {
+function Store({ onBack, pixiContainer }) {
     const [items, setItems] = useState([]);
     const [category, setCategory] = useState('ALL');
     const [currentPage, setCurrentPage] = useState(1);
     const ITEMS_PER_PAGE = 6;
 
-    // Pixi 컨테이너 숨기기
     useEffect(() => {
-        if (pixiContainer && pixiContainer.current) {
+        if (pixiContainer?.current) {
             pixiContainer.current.style.display = 'none';
         }
+
+        const currentPixiContainer = pixiContainer?.current;
+
         return () => {
-            if (pixiContainer && pixiContainer.current) {
-                pixiContainer.current.style.display = 'block';
+            if (currentPixiContainer) {
+                currentPixiContainer.style.display = 'block';
             }
         };
     }, [pixiContainer]);
 
-    // 아이템 가져오기
     useEffect(() => {
         const fetchItems = async () => {
             try {
@@ -47,21 +47,21 @@ function Store({ onBack, playerData, onLogout, pixiContainer }) {
         fetchItems();
     }, []);
 
-    // 카테고리별 필터링
     const filteredItems = category === 'ALL' ? items : items.filter((item) => item.itemType === category);
-
     const paginatedItems = filteredItems.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
-
     const totalPages = Math.ceil(filteredItems.length / ITEMS_PER_PAGE);
 
     return (
         <div className="new-store-container">
-            {/* 스테이터스 바 추가 */}
-            <StatusBar player={playerData} onLogout={onLogout} />
-
             <header className="store-header">
                 <h1>Store</h1>
-                <button className="back-button" onClick={onBack}>
+                <button
+                    className="back-button"
+                    onClick={() => {
+                        console.log('Back button clicked');
+                        onBack();
+                    }}
+                >
                     Back
                 </button>
             </header>
