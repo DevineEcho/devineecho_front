@@ -3,6 +3,7 @@ import './Store.css';
 
 function Store({ onBack, pixiContainer }) {
     const [items, setItems] = useState([]);
+    const [ownedItems, setOwnedItems] = useState([]); // 사용자가 보유한 아이템
     const [category, setCategory] = useState('ALL');
     const [currentPage, setCurrentPage] = useState(1);
     const ITEMS_PER_PAGE = 6;
@@ -25,7 +26,8 @@ function Store({ onBack, pixiContainer }) {
         const fetchItems = async () => {
             try {
                 const token = localStorage.getItem('token');
-                const response = await fetch('http://localhost:8080/api/items', {
+                console.log('Token:', token);
+                const itemsResponse = await fetch('http://localhost:8080/api/items', {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
@@ -33,14 +35,38 @@ function Store({ onBack, pixiContainer }) {
                     },
                 });
 
-                if (response.ok) {
-                    const data = await response.json();
-                    setItems(data);
+                const ownedItemsResponse = await fetch('http://localhost:8080/api/player/items', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                });
+
+                console.log('Items Response Status:', itemsResponse.status);
+                console.log('Owned Items Response Status:', ownedItemsResponse.status);
+
+                if (itemsResponse.ok && ownedItemsResponse.ok) {
+                    const items = await itemsResponse.json();
+                    const ownedItems = await ownedItemsResponse.json();
+
+                    const ownedItemIds = new Set(ownedItems.map((item) => item.id));
+
+                    // 소유 여부 추가 및 정렬
+                    const sortedItems = items
+                        .map((item) => ({
+                            ...item,
+                            owned: ownedItemIds.has(item.id), // 소유 여부
+                            imageUrl: `/ingameItem/${item.name}.png`,
+                        }))
+                        .sort((a, b) => a.owned - b.owned); // 미소유 아이템을 먼저 표시
+
+                    setItems(sortedItems);
                 } else {
-                    console.error('Failed to fetch items', response.status, response.statusText);
+                    console.error('Failed to fetch items or owned items');
                 }
             } catch (error) {
-                console.error('Error fetching items:', error.message || JSON.stringify(error));
+                console.error('Error fetching items or owned items:', error);
             }
         };
 
@@ -88,14 +114,21 @@ function Store({ onBack, pixiContainer }) {
                 {paginatedItems.map((item) => (
                     <div key={item.id} className="store-item">
                         <img
-                            src={item.imageUrl || 'https://via.placeholder.com/150'}
+                            src={item.imageUrl}
                             alt={item.name}
                             className="item-image"
+                            style={{ width: '300px', height: '300px' }} // 고정 크기
                         />
                         <h3>{item.name}</h3>
                         <p>Gold: {item.requiredGold}</p>
                         <p>Diamond: {item.requiredDiamond}</p>
-                        <button>Buy</button>
+                        {item.owned ? (
+                            <button disabled className="owned-button">
+                                보유중
+                            </button>
+                        ) : (
+                            <button className="buy-button">Buy</button>
+                        )}
                     </div>
                 ))}
                 {paginatedItems.length === 0 && <p>No items found</p>}
