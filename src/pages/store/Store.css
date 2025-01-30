@@ -56,13 +56,12 @@
     border: 1px solid #555;
     border-radius: 5px;
     cursor: pointer;
-    transition: background-color 0.2s, transform 0.2s;
+    transition: background-color 0.2s;
 }
 
 .store-tabs .active-tab {
     background-color: #555;
     color: #fff;
-    transform: scale(1.1);
 }
 
 .store-tabs button:hover {
@@ -86,28 +85,28 @@
     border-radius: 10px;
     padding: 10px;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
-    transition: transform 0.2s, box-shadow 0.2s;
-    width: 300px;
-    height: 450px;
+    transition: box-shadow 0.2s;
+    width: 220px;
+    height: 320px;
+    justify-content: space-between;
 }
 
 .store-item:hover {
-    transform: scale(1.05);
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
 }
 
 .store-item img {
-    width: 100%;
-    height: 140px;
+    width: 150px;
+    height: 150px;
     object-fit: cover;
     border-radius: 5px;
     margin-bottom: 10px;
 }
 
 .store-item h3 {
-    font-size: 14px;
+    font-size: 18px;
     color: #fff;
-    margin-bottom: 5px;
+    margin-bottom: 10px;
     text-align: center;
 }
 
@@ -117,20 +116,49 @@
     margin: 2px 0;
 }
 
-.store-item button {
+.store-item:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+}
+
+.owned-label {
     margin-top: 8px;
+    padding: 8px 12px;
+    background-color: transparent;
+    color: white;
+    font-size: 14px;
+    border: none;
+    border-radius: 0;
+    text-align: center;
+    cursor: default;
+}
+
+.purchase-buttons {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 15px; /* 구매 버튼과 설명 텍스트 간격 추가 */
+    width: 100%;
+}
+
+.purchase-buttons .buy-button {
+    flex: 1;
     padding: 8px 12px;
     background-color: #444;
     color: white;
     border: 1px solid #555;
     border-radius: 5px;
     cursor: pointer;
-    transition: background-color 0.2s, transform 0.2s;
+    transition: background-color 0.2s;
 }
 
-.store-item button:hover {
+.purchase-buttons .buy-button:hover {
     background-color: #666;
-    transform: scale(1.1);
+}
+
+.purchase-buttons .buy-button:disabled {
+    background-color: #333;
+    cursor: not-allowed;
 }
 
 .pagination {
@@ -165,28 +193,68 @@
     color: #fff;
 }
 
-.owned-button {
-    margin-top: 8px;
-    padding: 8px 12px;
-    background-color: #666;
-    color: white;
-    border: 1px solid #555;
-    border-radius: 5px;
-    cursor: not-allowed;
+/* 팝업 컨테이너 */
+.popup-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
 }
 
-.buy-button {
-    margin-top: 8px;
-    padding: 8px 12px;
+/* 팝업 */
+.popup {
+    background-color: #333;
+    border: 1px solid #555;
+    border-radius: 10px;
+    padding: 20px;
+    text-align: center;
+    color: white;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
+    max-width: 300px;
+    width: 90%;
+}
+
+.popup.success {
+    border-color: #4caf50;
+}
+
+.popup.error {
+    border-color: #f44336;
+}
+
+.popup button {
+    margin-top: 20px;
+    padding: 10px 20px;
     background-color: #444;
     color: white;
-    border: 1px solid #555;
+    border: none;
     border-radius: 5px;
     cursor: pointer;
-    transition: background-color 0.2s, transform 0.2s;
+    transition: background-color 0.3s;
 }
 
-.buy-button:hover {
+.popup button:hover {
     background-color: #666;
-    transform: scale(1.1);
+}
+
+.item-description {
+    font-size: 12px;
+    color: #bbb;
+    margin-top: 10px;
+    margin-bottom: 15px;
+    text-align: center;
+    line-height: 1.4;
+    white-space: normal;
+    word-break: break-word;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    height: 3em;
 }

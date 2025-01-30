@@ -258,6 +258,7 @@ function DivineEchoGameUI({ onOpenStore }) {
                     playerData={playerData}
                     onLogout={handleLogout}
                     pixiContainer={pixiContainer}
+                    updatePlayerData={fetchPlayerData}
                 />
             )}
         </div>
