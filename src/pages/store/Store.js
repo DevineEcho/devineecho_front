@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import './Store.css';
+import GoldBarImage from './images/GoldBar.png';
 
-function Store({ onBack, pixiContainer }) {
+function Store({ onBack, pixiContainer, updatePlayerData }) {
     const [items, setItems] = useState([]);
     const [playerStats, setPlayerStats] = useState({ gold: 0, diamond: 0 });
     const [category, setCategory] = useState('ALL');
@@ -107,12 +108,27 @@ function Store({ onBack, pixiContainer }) {
             );
 
             if (response.ok) {
+                // 구매 성공
                 const updatedPlayer = await response.json();
+
+                // Store 내부 상태 업데이트
                 setPlayerStats({ gold: updatedPlayer.gold, diamond: updatedPlayer.diamond });
+
+                // 아이템 목록 갱신
                 fetchItems();
+
+                // 부모 컴포넌트의 상태 갱신 요청
+                updatePlayerData();
+
                 setPopup({ show: true, message: '구매 성공!', success: true });
             } else {
-                setPopup({ show: true, message: '구매 실패! 다시 시도해주세요.', success: false });
+                // 구매 실패
+                const errorData = await response.json(); // 백엔드의 에러 메시지를 읽어옴
+                if (errorData.message) {
+                    setPopup({ show: true, message: `${errorData.message}`, success: false });
+                } else {
+                    setPopup({ show: true, message: '구매 실패! 다시 시도해주세요.', success: false });
+                }
             }
         } catch (error) {
             console.error('구매 중 오류 발생:', error);
@@ -182,7 +198,7 @@ function Store({ onBack, pixiContainer }) {
 
             <div className="store-items">
                 {paginatedItems.map((item) => {
-                    const { line1, line2 } = splitText(item.description, 20); // 한 줄당 최대 20글자
+                    const { line1, line2 } = splitText(item.description, 20);
                     return (
                         <div key={item.id} className="store-item">
                             <img src={item.imageUrl} alt={item.displayName} className="item-image" />
@@ -206,7 +222,8 @@ function Store({ onBack, pixiContainer }) {
                                     )}
                                     {item.requiredGold > 0 && (
                                         <button className="buy-button" onClick={() => handlePurchase(item.id, 'GOLD')}>
-                                            🪙 {item.requiredGold}
+                                            <img src={GoldBarImage} alt="Gold" className="currency-icon" />
+                                            {item.requiredGold}
                                         </button>
                                     )}
                                 </div>

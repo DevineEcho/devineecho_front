@@ -150,6 +150,15 @@
     border-radius: 5px;
     cursor: pointer;
     transition: background-color 0.2s;
+    display: flex; /* 플렉스박스를 사용 */
+    align-items: center; /* 세로 정렬 */
+    justify-content: center; /* 가로 정렬 */
+    gap: 5px; /* 아이콘과 텍스트 간격 */
+}
+
+.purchase-buttons .currency-icon {
+    width: 20px; /* 원하는 크기 */
+    height: 20px; /* 원하는 크기 */
 }
 
 .purchase-buttons .buy-button:hover {
@@ -193,7 +202,6 @@
     color: #fff;
 }
 
-/* 팝업 컨테이너 */
 .popup-container {
     position: fixed;
     top: 0;
@@ -207,7 +215,6 @@
     z-index: 1000;
 }
 
-/* 팝업 */
 .popup {
     background-color: #333;
     border: 1px solid #555;
@@ -243,6 +250,12 @@
     background-color: #666;
 }
 
+.popup p {
+    word-break: break-word;
+    text-align: center;
+    margin-bottom: 10px;
+}
+
 .item-description {
     font-size: 12px;
     color: #bbb;
@@ -257,4 +270,13 @@
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     height: 3em;
+}
+
+.store-item .currency-icon {
+    width: 20px; /* 원하는 크기 */
+    height: 20px; /* 원하는 크기 */
+    margin-right: 2px;
+    vertical-align: middle; /* 텍스트와 정렬 */
+    position: relative;
+    top: 4px; /* 이미지를 살짝 아래로 내림 */
 }

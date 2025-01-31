@@ -7,6 +7,7 @@ import DivineEchoGameCore from './DivineEchoGameCore';
 import StatusBar from '../status/StatusBar';
 import Login from '../login/Login';
 import Store from '../store/Store';
+import Inventory from '../inventory/Inventory';
 import './DivineEchoGameUI.css';
 
 function DivineEchoGameUI({ onOpenStore }) {
@@ -19,6 +20,7 @@ function DivineEchoGameUI({ onOpenStore }) {
     const [showStatusBar, setShowStatusBar] = useState(true);
     const [isLoggedIn, setIsLoggedIn] = useState(true);
     const [isStoreOpen, setIsStoreOpen] = useState(false);
+    const [isInventoryOpen, setIsInventoryOpen] = useState(false);
 
     useEffect(() => {
         const sound = new Audio(buttonClickSoundFile);
@@ -94,7 +96,7 @@ function DivineEchoGameUI({ onOpenStore }) {
         };
 
         video.onended = () => {
-            console.log('Intro video ended, starting game...');
+            console.log('Intro video ended, starting game with default skills...');
             pixiContainer.current.removeChild(video);
             startGame();
         };
@@ -139,12 +141,19 @@ function DivineEchoGameUI({ onOpenStore }) {
         }
     }, []);
 
+    const handleOpenInventory = useCallback(() => {
+        setIsInventoryOpen(true);
+        if (pixiContainer.current) {
+            pixiContainer.current.style.display = 'none';
+        }
+    }, []);
+
     const addPixiButtons = useCallback(() => {
         const buttons = [
             { label: '처음부터하기', x: 200, y: 140, onClick: playIntroVideo },
             { label: '이어하기', x: 450, y: 140, onClick: () => fetchPlayerData().then(startGame) },
             { label: '상점', x: 200, y: 280, onClick: handleOpenStore },
-            { label: '인벤토리', x: 450, y: 280, onClick: () => alert('인벤토리로 이동') },
+            { label: '인벤토리', x: 450, y: 280, onClick: handleOpenInventory },
             { label: '랭킹', x: 450, y: 400, onClick: () => alert('랭킹으로 이동') },
         ];
 
@@ -259,6 +268,13 @@ function DivineEchoGameUI({ onOpenStore }) {
                     onLogout={handleLogout}
                     pixiContainer={pixiContainer}
                     updatePlayerData={fetchPlayerData}
+                />
+            )}
+            {isInventoryOpen && (
+                <Inventory
+                    onBack={() => setIsInventoryOpen(false)}
+                    fetchPlayerItems={() => fetchPlayerData().then((data) => data.ownedItems)}
+                    fetchPlayerSkills={() => fetchPlayerData().then((data) => data.ownedSkills)}
                 />
             )}
         </div>

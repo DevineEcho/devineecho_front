@@ -1,142 +1,116 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './Inventory.css';
 
-function Inventory({ onSave, onBack }) {
-    const [skills, setSkills] = useState([]);
-    const [skins, setSkins] = useState([]);
-    const [selectedSkills, setSelectedSkills] = useState(['Holy Circle', 'Saint Aura', 'Saint Hammer']); // 기본 장착 스킬
-    const [selectedSkin, setSelectedSkin] = useState(null);
-    const [playerData, setPlayerData] = useState(null);
-    const [activeTab, setActiveTab] = useState('SKILL'); // SKILL 또는 SKIN
+function Inventory({ onBack, fetchPlayerSkills, saveEquippedSkills }) {
+    const [ownedSkills, setOwnedSkills] = useState([]);
+    const [equippedSkills, setEquippedSkills] = useState({
+        skill1: { id: 'holy-circle', name: 'Holy Circle' },
+        skill2: null,
+        skill3: null,
+    });
 
     useEffect(() => {
-        const fetchInventory = async () => {
-            const token = localStorage.getItem('token');
+        const loadPlayerSkills = async () => {
             try {
-                const response = await fetch('http://localhost:8080/api/players/load', {
-                    method: 'GET',
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                        'Content-Type': 'application/json',
-                    },
-                });
-                if (response.ok) {
-                    const data = await response.json();
-                    setPlayerData(data);
-                    setSkills(data.ownedSkills || []);
-                    setSkins(data.ownedSkins || []);
-                } else {
-                    console.error('Failed to fetch inventory data');
-                }
+                const skills = await fetchPlayerSkills();
+                setOwnedSkills(skills.filter((skill) => skill.name !== 'Holy Circle'));
             } catch (error) {
-                console.error('Error fetching inventory:', error.message || JSON.stringify(error));
+                console.error('Error loading player skills:', error);
             }
         };
+        loadPlayerSkills();
+    }, [fetchPlayerSkills]);
 
-        fetchInventory();
-    }, []);
-
-    const handleSkillSelect = (skillName) => {
-        if (skillName === 'Holy Circle') return; // Holy Circle은 변경 불가
-        const updatedSkills = [...selectedSkills];
-        const index = updatedSkills.indexOf(skillName);
-
-        if (index > -1) {
-            updatedSkills.splice(index, 1);
-        } else if (updatedSkills.length < 3) {
-            const replaceIndex = updatedSkills.findIndex((skill) => skill !== 'Holy Circle' && skill !== skillName);
-            if (replaceIndex !== -1) updatedSkills[replaceIndex] = skillName;
-            else updatedSkills.push(skillName);
-        }
-
-        setSelectedSkills(updatedSkills);
-    };
-
-    const handleSkinSelect = (skinName) => {
-        setSelectedSkin(skinName);
+    const handleEquipSkill = (skill, slot) => {
+        setEquippedSkills((prev) => ({ ...prev, [slot]: skill }));
     };
 
     const handleSave = async () => {
-        const token = localStorage.getItem('token');
         try {
-            const response = await fetch('http://localhost:8080/api/players/save-skins', {
+            const equippedSkillsPayload = {
+                skill1: equippedSkills.skill1?.id || null,
+                skill2: equippedSkills.skill2?.id || null,
+                skill3: equippedSkills.skill3?.id || null,
+            };
+
+            const token = localStorage.getItem('token');
+            await fetch('http://localhost:8080/api/players/equip-skills', {
                 method: 'POST',
                 headers: {
-                    Authorization: `Bearer ${token}`,
                     'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
                 },
-                body: JSON.stringify({
-                    skills: selectedSkills,
-                    skin: selectedSkin,
-                }),
+                body: JSON.stringify(equippedSkillsPayload),
             });
-            if (response.ok) {
-                alert('Inventory saved successfully!');
-                onSave();
-            } else {
-                console.error('Failed to save inventory');
-            }
+            alert('Skills saved successfully!');
         } catch (error) {
-            console.error('Error saving inventory:', error.message || JSON.stringify(error));
+            console.error('Error saving skills:', error);
+            alert('Failed to save skills. Please try again.');
         }
     };
 
-    if (!playerData) return <div>Loading...</div>;
-
     return (
         <div className="inventory-container">
-            <div className="inventory-tabs">
-                <button onClick={() => setActiveTab('SKILL')} className={activeTab === 'SKILL' ? 'active' : ''}>
-                    Skills
+            <header className="inventory-header">
+                <h1>Inventory - Skills</h1>
+                <button className="back-button" onClick={onBack}>
+                    Back
                 </button>
-                <button onClick={() => setActiveTab('SKIN')} className={activeTab === 'SKIN' ? 'active' : ''}>
-                    Skins
-                </button>
-                <button onClick={onBack}>Back</button>
+            </header>
+            <div className="inventory-content">
+                <div className="skill-slots">
+                    <h2>Equipped Skills</h2>
+                    <div className="slot fixed-slot">
+                        <h3>Skill 1</h3>
+                        <p>{equippedSkills.skill1.name}</p>
+                    </div>
+                    <div className="slot">
+                        <h3>Skill 2</h3>
+                        <p>{equippedSkills.skill2?.name || 'None equipped'}</p>
+                        <button
+                            onClick={() => setEquippedSkills((prev) => ({ ...prev, skill2: null }))}
+                            disabled={!equippedSkills.skill2}
+                        >
+                            Remove
+                        </button>
+                    </div>
+                    <div className="slot">
+                        <h3>Skill 3</h3>
+                        <p>{equippedSkills.skill3?.name || 'None equipped'}</p>
+                        <button
+                            onClick={() => setEquippedSkills((prev) => ({ ...prev, skill3: null }))}
+                            disabled={!equippedSkills.skill3}
+                        >
+                            Remove
+                        </button>
+                    </div>
+                    <button className="save-button" onClick={handleSave}>
+                        Save
+                    </button>
+                </div>
+                <div className="owned-skills">
+                    <h2>Available Skills</h2>
+                    {ownedSkills.map((skill) => (
+                        <div key={skill.id} className="skill-item">
+                            <p>{skill.name}</p>
+                            <button
+                                onClick={() =>
+                                    !equippedSkills.skill2
+                                        ? handleEquipSkill(skill, 'skill2')
+                                        : handleEquipSkill(skill, 'skill3')
+                                }
+                                disabled={
+                                    equippedSkills.skill1?.id === skill.id ||
+                                    equippedSkills.skill2?.id === skill.id ||
+                                    equippedSkills.skill3?.id === skill.id
+                                }
+                            >
+                                Equip
+                            </button>
+                        </div>
+                    ))}
+                </div>
             </div>
-            {activeTab === 'SKILL' ? (
-                <div className="inventory-skill-tab">
-                    <h2>Skills</h2>
-                    <div className="inventory-skills">
-                        {skills.map((skill) => (
-                            <div
-                                key={skill.id}
-                                className={`skill-item ${selectedSkills.includes(skill.name) ? 'selected' : ''}`}
-                                onClick={() => handleSkillSelect(skill.name)}
-                            >
-                                <h3>{skill.name}</h3>
-                                <p>Level: {skill.level}</p>
-                            </div>
-                        ))}
-                    </div>
-                    <h3>Equipped Skills:</h3>
-                    <div className="equipped-skills">
-                        {selectedSkills.map((skill, index) => (
-                            <div key={index} className="equipped-skill">
-                                {skill}
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            ) : (
-                <div className="inventory-skin-tab">
-                    <h2>Skins</h2>
-                    <div className="inventory-skins">
-                        {skins.map((skin) => (
-                            <div
-                                key={skin.id}
-                                className={`skin-item ${selectedSkin === skin.name ? 'selected' : ''}`}
-                                onClick={() => handleSkinSelect(skin.name)}
-                            >
-                                <h3>{skin.name}</h3>
-                            </div>
-                        ))}
-                    </div>
-                    <h3>Equipped Skin:</h3>
-                    <div className="equipped-skin">{selectedSkin ? selectedSkin : 'No Skin Selected'}</div>
-                </div>
-            )}
-            <button onClick={handleSave}>Save</button>
         </div>
     );
 }
