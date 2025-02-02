@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './Inventory.css';
 
-function Inventory({ onBack, fetchPlayerSkills, saveEquippedSkills }) {
+function Inventory({ onBack }) {
     const [ownedSkills, setOwnedSkills] = useState([]);
     const [equippedSkills, setEquippedSkills] = useState({
         skill1: { id: 'holy-circle', name: 'Holy Circle' },
@@ -10,31 +10,91 @@ function Inventory({ onBack, fetchPlayerSkills, saveEquippedSkills }) {
     });
 
     useEffect(() => {
-        const loadPlayerSkills = async () => {
+        const loadSkills = async () => {
             try {
-                const skills = await fetchPlayerSkills();
-                setOwnedSkills(skills.filter((skill) => skill.name !== 'Holy Circle'));
+                const token = localStorage.getItem('token');
+
+                const equippedResponse = await fetch('http://localhost:8080/api/skills/equipped-skills', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                });
+
+                const ownedResponse = await fetch('http://localhost:8080/api/skills', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                });
+
+                if (equippedResponse.ok && ownedResponse.ok) {
+                    const equipped = await equippedResponse.json();
+                    const owned = await ownedResponse.json();
+
+                    console.log('Equipped Skills:', equipped);
+                    console.log('Owned Skills:', owned);
+
+                    setEquippedSkills({
+                        skill1: equipped[0] || { id: 'holy-circle', name: 'Holy Circle' },
+                        skill2: equipped[1] || null,
+                        skill3: equipped[2] || null,
+                    });
+
+                    const equippedIds = equipped.map((skill) => skill.id);
+                    const filteredOwned = owned.filter(
+                        (skill) => !equippedIds.includes(skill.id) && skill.skillType !== 'ENEMY'
+                    );
+
+                    setOwnedSkills(filteredOwned);
+                } else {
+                    console.error('Failed to fetch skills:', equippedResponse.status, ownedResponse.status);
+                }
             } catch (error) {
-                console.error('Error loading player skills:', error);
+                console.error('Error loading skills:', error);
             }
         };
-        loadPlayerSkills();
-    }, [fetchPlayerSkills]);
+
+        loadSkills();
+    }, []);
 
     const handleEquipSkill = (skill, slot) => {
-        setEquippedSkills((prev) => ({ ...prev, [slot]: skill }));
+        setEquippedSkills((prev) => {
+            const updated = { ...prev, [slot]: skill };
+            updateAvailableSkills(updated);
+            return updated;
+        });
+    };
+
+    const handleRemoveSkill = (slot) => {
+        setEquippedSkills((prev) => {
+            const updated = { ...prev, [slot]: null };
+            updateAvailableSkills(updated);
+            return updated;
+        });
+    };
+
+    const updateAvailableSkills = (equipped) => {
+        setOwnedSkills((prevOwned) => {
+            const equippedIds = Object.values(equipped)
+                .filter((skill) => skill)
+                .map((skill) => skill.id);
+            return prevOwned.filter((skill) => !equippedIds.includes(skill.id));
+        });
     };
 
     const handleSave = async () => {
         try {
             const equippedSkillsPayload = {
-                skill1: equippedSkills.skill1?.id || null,
+                skill1: equippedSkills.skill1?.id || 'holy-circle',
                 skill2: equippedSkills.skill2?.id || null,
                 skill3: equippedSkills.skill3?.id || null,
             };
 
             const token = localStorage.getItem('token');
-            await fetch('http://localhost:8080/api/players/equip-skills', {
+            const response = await fetch('http://localhost:8080/api/skills/equip-skills', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -42,10 +102,15 @@ function Inventory({ onBack, fetchPlayerSkills, saveEquippedSkills }) {
                 },
                 body: JSON.stringify(equippedSkillsPayload),
             });
-            alert('Skills saved successfully!');
+
+            if (response.ok) {
+                alert('Skills saved successfully!');
+            } else {
+                alert('Failed to save skills.');
+            }
         } catch (error) {
             console.error('Error saving skills:', error);
-            alert('Failed to save skills. Please try again.');
+            alert('Failed to save skills.');
         }
     };
 
@@ -57,60 +122,44 @@ function Inventory({ onBack, fetchPlayerSkills, saveEquippedSkills }) {
                     Back
                 </button>
             </header>
-            <div className="inventory-content">
+
+            <div className="skill-slots-container">
                 <div className="skill-slots">
-                    <h2>Equipped Skills</h2>
                     <div className="slot fixed-slot">
-                        <h3>Skill 1</h3>
+                        <h3>Skill 1 (Fixed)</h3>
                         <p>{equippedSkills.skill1.name}</p>
                     </div>
-                    <div className="slot">
+                    <div className="slot" onClick={() => handleRemoveSkill('skill2')}>
                         <h3>Skill 2</h3>
                         <p>{equippedSkills.skill2?.name || 'None equipped'}</p>
-                        <button
-                            onClick={() => setEquippedSkills((prev) => ({ ...prev, skill2: null }))}
-                            disabled={!equippedSkills.skill2}
-                        >
-                            Remove
-                        </button>
                     </div>
-                    <div className="slot">
+                    <div className="slot" onClick={() => handleRemoveSkill('skill3')}>
                         <h3>Skill 3</h3>
                         <p>{equippedSkills.skill3?.name || 'None equipped'}</p>
-                        <button
-                            onClick={() => setEquippedSkills((prev) => ({ ...prev, skill3: null }))}
-                            disabled={!equippedSkills.skill3}
-                        >
-                            Remove
-                        </button>
                     </div>
-                    <button className="save-button" onClick={handleSave}>
-                        Save
-                    </button>
                 </div>
+
                 <div className="owned-skills">
                     <h2>Available Skills</h2>
                     {ownedSkills.map((skill) => (
-                        <div key={skill.id} className="skill-item">
+                        <div
+                            key={skill.id}
+                            className="skill-item"
+                            onClick={() => {
+                                !equippedSkills.skill2
+                                    ? handleEquipSkill(skill, 'skill2')
+                                    : handleEquipSkill(skill, 'skill3');
+                            }}
+                        >
                             <p>{skill.name}</p>
-                            <button
-                                onClick={() =>
-                                    !equippedSkills.skill2
-                                        ? handleEquipSkill(skill, 'skill2')
-                                        : handleEquipSkill(skill, 'skill3')
-                                }
-                                disabled={
-                                    equippedSkills.skill1?.id === skill.id ||
-                                    equippedSkills.skill2?.id === skill.id ||
-                                    equippedSkills.skill3?.id === skill.id
-                                }
-                            >
-                                Equip
-                            </button>
                         </div>
                     ))}
                 </div>
             </div>
+
+            <button className="save-button" onClick={handleSave}>
+                Save
+            </button>
         </div>
     );
 }

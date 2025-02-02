@@ -47,7 +47,31 @@ function DivineEchoGameUI({ onOpenStore }) {
         }
     }, []);
 
-    const startGame = useCallback(() => {
+    const fetchEquippedSkills = useCallback(async () => {
+        const token = localStorage.getItem('token');
+        try {
+            const response = await fetch('http://localhost:8080/api/skills/equipped-skills', {
+                method: 'GET',
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (response.ok) {
+                let equippedSkills = await response.json();
+
+                if (!equippedSkills.some((skill) => skill.name === 'Holy Circle')) {
+                    equippedSkills.unshift({ id: 'holy-circle', name: 'Holy Circle' });
+                }
+
+                return equippedSkills;
+            } else {
+                console.error('Failed to fetch equipped skills');
+            }
+        } catch (error) {
+            console.error('Error fetching equipped skills:', error);
+        }
+        return [{ id: 'holy-circle', name: 'Holy Circle' }];
+    }, []);
+
+    const startGame = useCallback(async () => {
         if (!pixiApp.current) {
             console.error('PIXI Application is not initialized');
             return;
@@ -57,12 +81,18 @@ function DivineEchoGameUI({ onOpenStore }) {
         pixiApp.current.stage.removeChildren();
 
         try {
-            gameCore.current = new DivineEchoGameCore(pixiApp.current);
-            console.log('Game started successfully');
+            let equippedSkills = await fetchEquippedSkills();
+
+            if (!equippedSkills.some((skill) => skill.name === 'Holy Circle')) {
+                equippedSkills.unshift({ id: 'holy-circle', name: 'Holy Circle' });
+            }
+
+            gameCore.current = new DivineEchoGameCore(pixiApp.current, equippedSkills);
+            console.log('Game started with equipped skills:', equippedSkills);
         } catch (error) {
             console.error('Error initializing DivineEchoGameCore:', error);
         }
-    }, []);
+    }, [fetchEquippedSkills]);
 
     const playIntroVideo = useCallback(async () => {
         setShowStatusBar(false);
@@ -98,7 +128,7 @@ function DivineEchoGameUI({ onOpenStore }) {
         video.onended = () => {
             console.log('Intro video ended, starting game with default skills...');
             pixiContainer.current.removeChild(video);
-            startGame();
+            startGame(false);
         };
 
         video.load();
@@ -151,7 +181,7 @@ function DivineEchoGameUI({ onOpenStore }) {
     const addPixiButtons = useCallback(() => {
         const buttons = [
             { label: '처음부터하기', x: 200, y: 140, onClick: playIntroVideo },
-            { label: '이어하기', x: 450, y: 140, onClick: () => fetchPlayerData().then(startGame) },
+            { label: '이어하기', x: 450, y: 140, onClick: () => startGame(true) },
             { label: '상점', x: 200, y: 280, onClick: handleOpenStore },
             { label: '인벤토리', x: 450, y: 280, onClick: handleOpenInventory },
             { label: '랭킹', x: 450, y: 400, onClick: () => alert('랭킹으로 이동') },
@@ -219,7 +249,7 @@ function DivineEchoGameUI({ onOpenStore }) {
 
             pixiApp.current.stage.addChild(buttonContainer);
         });
-    }, [hoverSound, playIntroVideo, fetchPlayerData, startGame, handleOpenStore]);
+    }, [hoverSound, playIntroVideo, startGame, handleOpenStore, handleOpenInventory]);
 
     const initPixiApp = useCallback(() => {
         if (!pixiApp.current) {
@@ -260,7 +290,11 @@ function DivineEchoGameUI({ onOpenStore }) {
     return isLoggedIn ? (
         <div className="game-container">
             {showStatusBar && playerData && <StatusBar player={playerData} onLogout={handleLogout} />}
-            <div style={{ display: isStoreOpen ? 'none' : 'block' }} className="pixi-container" ref={pixiContainer} />
+            <div
+                style={{ display: isStoreOpen || isInventoryOpen ? 'none' : 'block' }}
+                className="pixi-container"
+                ref={pixiContainer}
+            />
             {isStoreOpen && (
                 <Store
                     onBack={() => setIsStoreOpen(false)}
