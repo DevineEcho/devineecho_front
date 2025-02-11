@@ -58,6 +58,7 @@ function DivineEchoGameUI({ onOpenStore }) {
                 let equippedSkills = await response.json();
 
                 if (!equippedSkills.some((skill) => skill.name === 'Holy Circle')) {
+                    console.warn('Holy Circle not found in equipped skills. Adding manually.');
                     equippedSkills.unshift({ id: 'holy-circle', name: 'Holy Circle' });
                 }
 
