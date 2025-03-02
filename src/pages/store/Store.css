@@ -137,7 +137,7 @@
     display: flex;
     justify-content: space-between;
     gap: 10px;
-    margin-top: 15px; /* 구매 버튼과 설명 텍스트 간격 추가 */
+    margin-top: 15px;
     width: 100%;
 }
 
@@ -150,15 +150,15 @@
     border-radius: 5px;
     cursor: pointer;
     transition: background-color 0.2s;
-    display: flex; /* 플렉스박스를 사용 */
-    align-items: center; /* 세로 정렬 */
-    justify-content: center; /* 가로 정렬 */
-    gap: 5px; /* 아이콘과 텍스트 간격 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
 }
 
 .purchase-buttons .currency-icon {
-    width: 20px; /* 원하는 크기 */
-    height: 20px; /* 원하는 크기 */
+    width: 20px;
+    height: 20px;
 }
 
 .purchase-buttons .buy-button:hover {
@@ -273,10 +273,10 @@
 }
 
 .store-item .currency-icon {
-    width: 20px; /* 원하는 크기 */
-    height: 20px; /* 원하는 크기 */
+    width: 20px;
+    height: 20px;
     margin-right: 2px;
-    vertical-align: middle; /* 텍스트와 정렬 */
+    vertical-align: middle;
     position: relative;
-    top: 4px; /* 이미지를 살짝 아래로 내림 */
+    top: 4px;
 }

@@ -59,10 +59,10 @@ function Store({ onBack, pixiContainer, updatePlayerData }) {
 
                 setItems(sortedItems);
             } else {
-                console.error('Failed to fetch items or owned items');
+                console.error('아이템 관련 정보 불러오기 실패');
             }
         } catch (error) {
-            console.error('Error fetching items or owned items:', error);
+            console.error('아이템 관련 정보 불러오기 실패', error);
         }
     };
 
@@ -81,10 +81,10 @@ function Store({ onBack, pixiContainer, updatePlayerData }) {
                 const player = await response.json();
                 setPlayerStats({ gold: player.gold, diamond: player.diamond });
             } else {
-                console.error('Failed to fetch player stats:', response.status);
+                console.error('플레이어 정보 불러오기 실패', response.status);
             }
         } catch (error) {
-            console.error('Error fetching player stats:', error);
+            console.error('플레이어 정보 불러오기 실패', error);
         }
     };
 
@@ -108,44 +108,38 @@ function Store({ onBack, pixiContainer, updatePlayerData }) {
             );
 
             if (response.ok) {
-                // 구매 성공
                 const updatedPlayer = await response.json();
 
-                // Store 내부 상태 업데이트
                 setPlayerStats({ gold: updatedPlayer.gold, diamond: updatedPlayer.diamond });
-
-                // 아이템 목록 갱신
                 fetchItems();
 
-                // 부모 컴포넌트의 상태 갱신 요청
                 updatePlayerData();
 
                 setPopup({ show: true, message: '구매 성공!', success: true });
             } else {
-                // 구매 실패
-                const errorData = await response.json(); // 백엔드의 에러 메시지를 읽어옴
+                const errorData = await response.json();
                 if (errorData.message) {
                     setPopup({ show: true, message: `${errorData.message}`, success: false });
                 } else {
-                    setPopup({ show: true, message: '구매 실패! 다시 시도해주세요.', success: false });
+                    setPopup({ show: true, message: '구매 실패! 다시 시도해주세요', success: false });
                 }
             }
         } catch (error) {
             console.error('구매 중 오류 발생:', error);
-            setPopup({ show: true, message: '구매 오류 발생! 다시 시도해주세요.', success: false });
+            setPopup({ show: true, message: '구매 오류 발생! 다시 시도해주세요', success: false });
         }
     };
 
     const splitText = (text, maxLineLength) => {
-        const words = text.split(' '); // 단어 단위로 나눔
+        const words = text.split(' ');
         let line1 = '';
         let line2 = '';
 
         for (let word of words) {
             if ((line1 + word).length <= maxLineLength) {
-                line1 += (line1 ? ' ' : '') + word; // 첫 번째 줄에 추가
+                line1 += (line1 ? ' ' : '') + word;
             } else {
-                line2 += (line2 ? ' ' : '') + word; // 두 번째 줄에 추가
+                line2 += (line2 ? ' ' : '') + word;
             }
         }
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import GameboyImage from './Gameboy.png';
 import Login from '../login/Login';
 import DivineEchoGameUI from '../game/DivineEchoGameUI';
@@ -7,17 +8,31 @@ import loadingVideo from '../game/video/loading.mp4';
 import './Main.css';
 
 function Main() {
-    const [isLoggedIn, setIsLoggedIn] = useState(false); // 로그인 상태
-    const [isLoading, setIsLoading] = useState(false); // 로딩 비디오 상태
+    const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
     const [showStore, setShowStore] = useState(false);
     const pixiContainer = useRef(null);
+    const navigate = useNavigate();
 
+    // ✅ localStorage에서 로그인 여부 확인
+    useEffect(() => {
+        const token = localStorage.getItem("token");
+        if (token) {
+            console.log("✅ 저장된 토큰 발견, 자동 로그인 처리");
+            setIsLoggedIn(true);
+        }
+    }, []);
+
+    // ✅ 로그인 성공 시 실행될 함수 (로딩 영상 재생 후 게임 화면 이동)
     const handleLoginSuccess = () => {
-        setIsLoading(true); // 로딩 시작
+        console.log("✅ handleLoginSuccess 실행됨");
+        setIsLoading(true);
+
         setTimeout(() => {
-            setIsLoggedIn(true); // 로그인 상태로 전환
-            setIsLoading(false); // 로딩 종료
-        }, 3000); // 로딩 비디오 지속 시간
+            setIsLoggedIn(true);
+            setIsLoading(false);
+            navigate("/"); // ✅ 로그인 성공 후 메인 화면으로 이동
+        }, 3000);
     };
 
     return (
@@ -25,7 +40,6 @@ function Main() {
             <img src={GameboyImage} alt="Game Boy" className="gameboy-image" />
             <div className="gameboy-screen">
                 {isLoading ? (
-                    // 로딩 비디오를 Gameboy 화면 내에 표시
                     <div className="loading-screen">
                         <video
                             src={loadingVideo}
@@ -36,14 +50,12 @@ function Main() {
                         />
                     </div>
                 ) : isLoggedIn ? (
-                    // 로그인 상태
                     showStore ? (
                         <Store onBack={() => setShowStore(false)} pixiContainer={pixiContainer} />
                     ) : (
                         <DivineEchoGameUI onOpenStore={() => setShowStore(true)} pixiContainer={pixiContainer} />
                     )
                 ) : (
-                    // 로그인 화면
                     <Login onLoginSuccess={handleLoginSuccess} />
                 )}
             </div>

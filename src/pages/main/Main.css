@@ -12,7 +12,7 @@
 .gameboy-screen {
     position: absolute;
     top: 18%;
-    left: 26%; /* 기존 24%에서 30%로 변경 */
+    left: 26%;
     width: 880px;
     height: 528px;
     display: flex;

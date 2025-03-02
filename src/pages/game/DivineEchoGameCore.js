@@ -17,11 +17,15 @@ import GodsHammer from './images/GodsHammer.png';
 import HolyCircle from './images/HolyCircle.png';
 import Explosion from './images/Explosion.png';
 import HolyGrail from './images/HolyGrail.png';
+import EnemyGrowing from './images/EnemyGrowing.png';
+import EnemyBooster from './images/EnemyBooster.png';
+import EnemyFactory from './images/EnemyFactory.png';
+
 
 class DivineEchoGameCore {
     constructor(app) {
         if (!app || !app.view) {
-            console.error('PIXI Application not initialized properly');
+            console.error('픽시가 시작되지 않음');
             return;
         }
         this.app = app;
@@ -81,6 +85,7 @@ class DivineEchoGameCore {
 
         this.isHallucinating = false;
         this.isHallucinationPaused = false;
+        this.isLevelUpActive = false;
         this.hallucinationInterval = null;
         this.hallucinationTimeout = null;
 
@@ -111,6 +116,9 @@ class DivineEchoGameCore {
             Explosion,
             Angel,
             HolyGrail,
+            EnemyGrowing,
+        EnemyBooster,
+        EnemyFactory,
         };
 
         const loadTexture = (key, path) => {
@@ -367,6 +375,7 @@ class DivineEchoGameCore {
     showLevelUpUI() {
         this.pauseGame();
         this.pauseHallucinationTimer();
+        this.isLevelUpActive = true;
 
         const levelUpContainer = new PIXI.Container();
         levelUpContainer.zIndex = 100;
@@ -380,24 +389,24 @@ class DivineEchoGameCore {
 
         const skillOptions = [
             {
-                name: 'Holy Circle',
+                name: '홀리써클',
                 image: this.textures.HolyCircle,
                 level: this.skills.holyCircle.level + 1,
-                description: 'Creates a holy circle that deals damage to enemies.',
+                description: '구체를 발사하여 적을 공격합니다',
                 maxed: this.skills.holyCircle.level >= this.skills.holyCircle.maxLevel,
             },
             {
-                name: 'Saint Aura',
+                name: '세인트오라',
                 image: this.textures.SaintAura,
                 level: this.skills.saintAura.level + 1,
-                description: 'A protective aura that increases damage.',
+                description: '신성한 가호를 몸에 둘러 적을 공격합니다',
                 maxed: this.skills.saintAura.level >= this.skills.saintAura.maxLevel,
             },
             {
-                name: "God's Hammer",
+                name: "갓 해머",
                 image: this.textures.GodsHammer,
                 level: this.skills.godsHammer.level + 1,
-                description: 'Drops hammers from above, dealing massive damage.',
+                description: '신의 망치를 적의 머리 위로 떨어뜨립니다',
                 maxed: this.skills.godsHammer.level >= this.skills.godsHammer.maxLevel,
             },
         ];
@@ -444,7 +453,7 @@ class DivineEchoGameCore {
             optionContainer.addChild(skillName);
 
             const skillDescription = new PIXI.Text(
-                option.maxed ? `${option.name}은 최대 레벨에 도달하였습니다.` : option.description,
+                option.maxed ? `${option.name}은 최대 스킬 레벨에 도달하였습니다.` : option.description,
                 {
                     fontFamily: 'Arial',
                     fontSize: 14,
@@ -475,7 +484,7 @@ class DivineEchoGameCore {
                 selectButton.on('pointerdown', () => {
                     this.upgradeSkill(index);
                     this.uiContainer.removeChild(levelUpContainer);
-
+                    this.isLevelUpActive = false;
                     this.showEnemyLevelUpUI();
                 });
 
@@ -495,6 +504,7 @@ class DivineEchoGameCore {
 
         this.pauseGame();
         this.pauseHallucinationTimer();
+        this.isLevelUpActive = true;
 
         const enemyLevelUpContainer = new PIXI.Container();
         enemyLevelUpContainer.zIndex = 999;
@@ -518,7 +528,8 @@ class DivineEchoGameCore {
                 description:
                     this.enemyGrowthLevel >= 10
                         ? '이 스킬은 이미 최대 레벨입니다.'
-                        : `소환되는 적(보스 제외)의 크기가 10% 상승합니다. 현재 레벨: ${this.enemyGrowthLevel}`,
+                        : `소악마의 크기가 10% 상승합니다`,
+                image: this.textures.EnemyGrowing,
                 levelUpEffect: () => this.increaseEnemySize(),
             },
             {
@@ -527,7 +538,8 @@ class DivineEchoGameCore {
                 description:
                     this.enemySpeedBoostLevel >= 10
                         ? '이 스킬은 이미 최대 레벨입니다.'
-                        : `소환되는 적(보스 제외)의 이동속도가 20% 상승합니다. 현재 레벨: ${this.enemySpeedBoostLevel}`,
+                        : `소악마의 이동속도가 20% 상승합니다`,
+                image: this.textures.EnemyBooster,
                 levelUpEffect: () => this.increaseEnemySpeed(),
             },
             {
@@ -536,7 +548,8 @@ class DivineEchoGameCore {
                 description:
                     this.enemySpawnBoostLevel >= 10
                         ? '이 스킬은 이미 최대 레벨입니다.'
-                        : `적(보스 제외)의 스폰이 30% 빨라집니다. 현재 레벨: ${this.enemySpawnBoostLevel}`,
+                        : `소악마의 스폰이 30% 빨라집니다`,
+                image: this.textures.EnemyFactory,
                 levelUpEffect: () => this.increaseEnemySpawnRate(),
             },
         ];
@@ -555,6 +568,14 @@ class DivineEchoGameCore {
             optionBg.endFill();
             optionBg.x = 10;
             optionContainer.addChild(optionBg);
+
+
+        const skillImage = new PIXI.Sprite(option.image);
+        skillImage.anchor.set(0.5);
+        skillImage.x = (optionWidth - 20) / 2;
+        skillImage.y = 60;
+        skillImage.scale.set(0.25);
+        optionContainer.addChild(skillImage);
 
             const skillName = new PIXI.Text(`${option.name} (Lv${option.level})`, {
                 fontFamily: 'Arial',
@@ -595,6 +616,7 @@ class DivineEchoGameCore {
             selectButton.on('pointerdown', () => {
                 option.levelUpEffect();
                 this.uiContainer.removeChild(enemyLevelUpContainer);
+                this.isLevelUpActive = false;
                 this.resumeGame();
                 this.resumeHallucinationTimer();
             });
@@ -1072,6 +1094,7 @@ class DivineEchoGameCore {
         const enemiesPerSpawn = 3 + this.stage - 1;
 
         const spawnEnemy = () => {
+            if (this.isLevelUpActive) return;
             const enemyTexture = this.isHallucinating ? this.textures.Angel : this.textures.Devil;
             const enemy = new PIXI.Sprite(enemyTexture);
             enemy.anchor.set(0.5);
@@ -1091,7 +1114,7 @@ class DivineEchoGameCore {
         };
 
         this.enemySpawnIntervalId = setInterval(() => {
-            if (this.stageComplete) return;
+            if (this.stageComplete || this.isLevelUpActive) return;
 
             for (let i = 0; i < enemiesPerSpawn; i++) {
                 spawnEnemy();
@@ -1346,81 +1369,81 @@ class DivineEchoGameCore {
                 },
                 body: JSON.stringify(playerData),
             });
-
+    
             if (response.ok) {
+                console.log("게임 저장 완료");
             } else {
+                console.error("게임 저장 실패");
             }
         } catch (error) {
-            console.error('Error during stage data save:', error.message || JSON.stringify(error));
+            console.error('저장오류발생', error);
         }
     }
+    
+    
 
+    async loadStageData() {
+        const token = localStorage.getItem('token');
+    
+        try {
+            const response = await fetch('http://localhost:8080/api/players/load', {
+                method: 'GET',
+                headers: { Authorization: `Bearer ${token}` },
+            });
+    
+            if (response.ok) {
+                const data = await response.json();
+
+                this.stage = data.currentStage || 1;
+                this.level = data.level || 1;
+                this.experience = data.experience || 0;
+                this.health = data.health || this.maxHealth;
+
+                const skills = Array.isArray(data.equippedSkills) ? data.equippedSkills : [];
+                this.skills.holyCircle.level = skills.find(s => s.name === 'Holy Circle')?.level || 1;
+                this.skills.saintAura.level = skills.find(s => s.name === 'Saint Aura')?.level || 0;
+                this.skills.godsHammer.level = skills.find(s => s.name === "God's Hammer")?.level || 0;
+    
+                const enemySkills = Array.isArray(data.enemySkills) ? data.enemySkills : [];
+                this.enemyGrowthLevel = enemySkills.find(s => s.name === 'Enemy Growth')?.level || 0;
+                this.enemySpeedBoostLevel = enemySkills.find(s => s.name === 'Speed Boost')?.level || 0;
+                this.enemySpawnBoostLevel = enemySkills.find(s => s.name === 'Spawn Boost')?.level || 0;
+    
+            } else {
+                console.error('게임 불러오기 실패');
+            }
+        } catch (error) {
+            console.error('불러오기 실패', error);
+        }
+    }
+    
+    
     resetStage() {
         const playerData = {
             level: this.level,
             exp: this.experience,
-            stage: this.stage,
+            stage: this.stage + 1,
+            health: this.health,
             playerSkills: [
-                {
-                    name: 'Holy Circle',
-                    level: this.skills.holyCircle.level,
-                },
-                {
-                    name: 'Saint Aura',
-                    level: this.skills.saintAura.level,
-                },
-                {
-                    name: "God's Hammer",
-                    level: this.skills.godsHammer.level,
-                },
+                { name: 'Holy Circle', level: this.skills.holyCircle.level },
+                { name: 'Saint Aura', level: this.skills.saintAura.level },
+                { name: "God's Hammer", level: this.skills.godsHammer.level },
             ],
             enemySkills: [
-                {
-                    name: 'Enemy Growth',
-                    level: this.enemyGrowthLevel,
-                },
-                {
-                    name: 'Speed Boost',
-                    level: this.enemySpeedBoostLevel,
-                },
-                {
-                    name: 'Spawn Boost',
-                    level: this.enemySpawnBoostLevel,
-                },
+                { name: 'Enemy Growth', level: this.enemyGrowthLevel },
+                { name: 'Speed Boost', level: this.enemySpeedBoostLevel },
+                { name: 'Spawn Boost', level: this.enemySpawnBoostLevel },
             ],
         };
-
+    
         this.saveStageData(playerData);
-
+    
         this.stage += 1;
-
+    
         this.timer = 120;
         this.stageComplete = false;
         this.isBossSpawned = false;
-
-        this.camera.children.forEach((child) => {
-            if (child.texture === this.textures.HolyGrail) {
-                this.camera.removeChild(child);
-            }
-        });
-
-        this.enemies.forEach((enemy) => this.camera.removeChild(enemy));
-        this.enemies = [];
-        if (this.boss) {
-            this.camera.removeChild(this.boss);
-            this.boss = null;
-        }
-
-        if (this.player) {
-            this.camera.removeChild(this.player);
-            this.player = null;
-        }
-
-        this.projectiles.forEach((projectile) => {
-            this.camera.removeChild(projectile.sprite);
-        });
-        this.projectiles = [];
-
+    
         this.showStageText(`STAGE ${this.stage}`, () => {
             this.createMap();
             this.createPlayer();
@@ -1429,6 +1452,8 @@ class DivineEchoGameCore {
             this.inputEnabled = true;
         });
     }
+    
+    
 
     cleanupSaintAura() {
         if (this.saintAuraActive) {
@@ -1461,7 +1486,7 @@ class DivineEchoGameCore {
         this.inputEnabled = false;
 
         if (!this.app || !this.app.view) {
-            console.error('PIXI Application not initialized properly');
+            console.error('픽시 실행 오류');
             return;
         }
 

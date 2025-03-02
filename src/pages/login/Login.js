@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import KakaoLoginHandler from "./KakaoLoginHandler";
 import './Login.css';
 
 function Login({ onLoginSuccess }) {
@@ -10,38 +12,62 @@ function Login({ onLoginSuccess }) {
     const [phoneNumber, setPhoneNumber] = useState('');
     const [securityAnswer, setSecurityAnswer] = useState('');
     const usernameRef = useRef(null);
+    const navigate = useNavigate();
 
+    if (!onLoginSuccess) {
+        console.error("onLoginSuccess가 정의되지 않았음!");
+    }
+
+
+    // 🔹 자동 포커스 설정
     useEffect(() => {
-        if (usernameRef.current) {
-            usernameRef.current.focus();
-        }
-    }, [isSignup, isRecovery]);
-
-    const handleLogin = async (e) => {
-        e.preventDefault();
-        try {
-            const response = await fetch('http://localhost:8080/api/auth/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ username, password }),
-            });
-
-            if (response.ok) {
-                const token = await response.text();
-                localStorage.setItem('token', token);
-                alert('Login successful!');
-                onLoginSuccess();
-            } else {
-                alert('Login failed');
+        setTimeout(() => {
+            if (usernameRef.current) {
+                usernameRef.current.focus();
             }
-        } catch (error) {
-            console.error('Error', error);
-            alert('Error occurred');
-        }
-    };
+        }, 100);
+    }, []);
 
+        // 🔹 일반 로그인
+        const handleLogin = async (e) => {
+            e.preventDefault();
+            try {
+                const response = await fetch('http://localhost:8080/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password }),
+                });
+    
+                if (response.ok) {
+                    const token = await response.text();
+                    localStorage.setItem('token', token);
+                    console.log("✅ 일반 로그인 성공! 토큰 저장 완료");
+    
+                    if (onLoginSuccess) {
+                        console.log("✅ onLoginSuccess 실행됨!");
+                        onLoginSuccess();
+                    } else {
+                        console.error("❌ onLoginSuccess가 정의되지 않음!");
+                    }
+    
+                    navigate('/');
+                } else {
+                    alert('로그인 실패');
+                }
+            } catch (error) {
+                console.error('Error', error);
+                alert('오류 발생');
+            }
+        };
+
+        const handleKakaoLogin = () => {
+            const KAKAO_AUTH_URL = `https://kauth.kakao.com/oauth/authorize?client_id=e1f65fcac9d3f01633d3bc45f2b4e408&redirect_uri=http://localhost:3000/login/kakao&response_type=code&prompt=login`;
+            window.location.href = KAKAO_AUTH_URL;
+        };
+        
+    
+
+    // 🔹 회원가입 처리
     const handleSignup = async (e) => {
         e.preventDefault();
 
@@ -53,9 +79,7 @@ function Login({ onLoginSuccess }) {
         try {
             const response = await fetch('http://localhost:8080/api/auth/signup', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     username,
                     password,
@@ -74,10 +98,11 @@ function Login({ onLoginSuccess }) {
             }
         } catch (error) {
             console.error('Error', error);
-            alert('Error occurred');
+            alert('오류 발생');
         }
     };
 
+    // 🔹 비밀번호 찾기 처리
     const handlePasswordRecovery = async () => {
         try {
             const response = await fetch('http://localhost:8080/api/auth/recover', {
@@ -130,32 +155,36 @@ function Login({ onLoginSuccess }) {
                         placeholder="신규 캐릭터명"
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
+                        onMouseDown={(e) => e.target.focus()}
                     />
                     <input
                         type="password"
                         placeholder="비밀번호"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
+                        onMouseDown={(e) => e.target.focus()}
                     />
                     <input
                         type="password"
                         placeholder="비밀번호 재입력"
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
+                        onMouseDown={(e) => e.target.focus()}
                     />
                     <input
                         type="text"
                         placeholder="휴대폰 번호"
                         value={phoneNumber}
                         onChange={(e) => setPhoneNumber(e.target.value)}
+                        onMouseDown={(e) => e.target.focus()}
                     />
                     <input
                         type="text"
                         placeholder="나의 보물 제 1호는?"
                         value={securityAnswer}
                         onChange={(e) => setSecurityAnswer(e.target.value)}
+                        onMouseDown={(e) => e.target.focus()}
                     />
-
                     <button className="signup-button" type="submit">
                         회원가입하기
                     </button>
@@ -174,12 +203,14 @@ function Login({ onLoginSuccess }) {
                         placeholder="캐릭터명"
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
+                        onMouseDown={(e) => e.target.focus()}
                     />
                     <input
                         type="password"
                         placeholder="비밀번호"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
+                        onMouseDown={(e) => e.target.focus()}
                     />
                     <button className="login-button" type="submit">
                         로그인
@@ -190,9 +221,10 @@ function Login({ onLoginSuccess }) {
                     <button className="recovery-button" type="button" onClick={() => setIsRecovery(true)}>
                         캐릭터명 / 비밀번호 찾기
                     </button>
-                    <button className="kakao-login-button" type="button">
-                        카카오 로그인
-                    </button>
+                    <button className="kakao-login-button" type="button" onClick={handleKakaoLogin}>
+                카카오 로그인
+            </button>
+        
                 </>
             )}
         </form>

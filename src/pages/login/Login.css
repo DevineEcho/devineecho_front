@@ -1,4 +1,9 @@
 .login-form {
+    position: absolute;
+    top: 50%; 
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1000;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -7,10 +12,13 @@
     border-radius: 10px;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.7);
     width: 300px;
-    margin: 20px auto;
 }
 
+
 .login-form input {
+    pointer-events: auto !important;
+    position: relative;
+    z-index: 1100;
     width: 100%;
     padding: 10px;
     margin-bottom: 15px;
@@ -28,6 +36,7 @@
     background-color: #444;
     box-shadow: 0 0 5px rgba(204, 68, 68, 0.8);
 }
+
 
 .login-form button {
     width: 100%;

@@ -38,11 +38,11 @@ function DivineEchoGameUI({ onOpenStore }) {
                 },
             });
             if (!response.ok) {
-                throw new Error('Failed to reset player data');
+                throw new Error('플레이어 데이터 초기화 실패');
             }
-            console.log('Player data reset.');
+            console.log('플레이어 데이터 초기화');
         } catch (error) {
-            console.error('Error during reset player data:', error.message || JSON.stringify(error));
+            console.error('플레이어 데이터 초기화 실패', error.message || JSON.stringify(error));
             throw error;
         }
     }, []);
@@ -54,55 +54,64 @@ function DivineEchoGameUI({ onOpenStore }) {
                 method: 'GET',
                 headers: { Authorization: `Bearer ${token}` },
             });
+    
             if (response.ok) {
                 let equippedSkills = await response.json();
-
-                if (!equippedSkills.some((skill) => skill.name === 'Holy Circle')) {
-                    console.warn('Holy Circle not found in equipped skills. Adding manually.');
-                    equippedSkills.unshift({ id: 'holy-circle', name: 'Holy Circle' });
+    
+                const holyCircleExists = equippedSkills.some(
+                    (skill) => skill.name.toLowerCase() === 'holycircle'
+                );
+    
+                if (!holyCircleExists) {
+                    console.error('백엔드에서 홀리서클 전달 되지 않음');
                 }
-
+    
                 return equippedSkills;
             } else {
-                console.error('Failed to fetch equipped skills');
+                console.error('장착스킬 불러오기 실패');
             }
         } catch (error) {
-            console.error('Error fetching equipped skills:', error);
+            console.error('장착스킬 불러오기 실패', error);
         }
-        return [{ id: 'holy-circle', name: 'Holy Circle' }];
+    
+        return [];
     }, []);
-
-    const startGame = useCallback(async () => {
+    
+    
+    
+    const startGame = useCallback(async (continueFromSave = false) => {
         if (!pixiApp.current) {
-            console.error('PIXI Application is not initialized');
+            console.error('픽시 실행 오류');
             return;
         }
-
+    
         setShowStatusBar(false);
         pixiApp.current.stage.removeChildren();
-
+    
         try {
             let equippedSkills = await fetchEquippedSkills();
-
-            if (!equippedSkills.some((skill) => skill.name === 'Holy Circle')) {
-                equippedSkills.unshift({ id: 'holy-circle', name: 'Holy Circle' });
+    
+            gameCore.current = new DivineEchoGameCore(pixiApp.current);
+    
+            if (continueFromSave) {
+                await gameCore.current.loadStageData();
             }
-
-            gameCore.current = new DivineEchoGameCore(pixiApp.current, equippedSkills);
-            console.log('Game started with equipped skills:', equippedSkills);
+    
+            console.log('장착 스킬:', equippedSkills);
         } catch (error) {
-            console.error('Error initializing DivineEchoGameCore:', error);
+            console.error('코어 실행 오류', error);
         }
     }, [fetchEquippedSkills]);
+    
+    
 
     const playIntroVideo = useCallback(async () => {
         setShowStatusBar(false);
 
         try {
             await resetPlayerData();
-            console.log('Player data has been reset.');
         } catch (error) {
-            console.error('Error resetting player data:', error);
+            console.error('플레이어 데이터 리셋 오류', error);
             return;
         }
 
@@ -123,11 +132,10 @@ function DivineEchoGameUI({ onOpenStore }) {
         pixiContainer.current.appendChild(video);
 
         video.oncanplay = () => {
-            video.play().catch((err) => console.error('Video playback failed:', err));
+            video.play().catch((err) => console.error('비디오 재생 실패', err));
         };
 
         video.onended = () => {
-            console.log('Intro video ended, starting game with default skills...');
             pixiContainer.current.removeChild(video);
             startGame(false);
         };
@@ -150,12 +158,11 @@ function DivineEchoGameUI({ onOpenStore }) {
             if (response.ok) {
                 const data = await response.json();
                 setPlayerData(data);
-                console.log('Player data loaded:', data);
             } else {
-                console.error('Failed to fetch player data');
+                console.error('플레이어 데이터 불러오기 실패');
             }
         } catch (error) {
-            console.error('Error during fetch player data:', error.message || JSON.stringify(error));
+            console.error('플레이어 데이터 불러오기 실패', error.message || JSON.stringify(error));
         }
     }, []);
 
@@ -181,11 +188,11 @@ function DivineEchoGameUI({ onOpenStore }) {
 
     const addPixiButtons = useCallback(() => {
         const buttons = [
-            { label: '처음부터하기', x: 200, y: 140, onClick: playIntroVideo },
-            { label: '이어하기', x: 450, y: 140, onClick: () => startGame(true) },
-            { label: '상점', x: 200, y: 280, onClick: handleOpenStore },
-            { label: '인벤토리', x: 450, y: 280, onClick: handleOpenInventory },
-            { label: '랭킹', x: 450, y: 400, onClick: () => alert('랭킹으로 이동') },
+            { label: '처음부터하기', x: 200, y: 100, onClick: () => startGame(false) },
+            { label: '이어하기', x: 450, y: 100, onClick: () => startGame(true) },
+            { label: '상점', x: 200, y: 220, onClick: handleOpenStore },
+            { label: '인벤토리', x: 450, y: 220, onClick: handleOpenInventory },
+            { label: '랭킹', x: 200, y: 340, onClick: () => alert('랭킹으로 이동') },
         ];
 
         buttons.forEach((button) => {
@@ -241,7 +248,7 @@ function DivineEchoGameUI({ onOpenStore }) {
                 if (hoverSound) {
                     hoverSound.currentTime = 0;
                     hoverSound.play().catch((error) => {
-                        console.error('Failed to play click sound:', error);
+                        console.error('소리 재생 실패', error);
                     });
                 }
 
@@ -277,6 +284,7 @@ function DivineEchoGameUI({ onOpenStore }) {
 
         return () => {
             if (pixiApp.current) {
+                console.log("🔻 Pixi 앱 제거");
                 pixiApp.current.destroy(true, true);
                 pixiApp.current = null;
             }

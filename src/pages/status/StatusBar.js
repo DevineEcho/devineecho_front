@@ -5,7 +5,7 @@ function StatusBar({ player, onLogout }) {
     if (!player) {
         return (
             <div className="status-bar">
-                <span>플레이어 데이터를 로딩 중...</span>
+                <span>플레이어 데이터를 로딩 중</span>
             </div>
         );
     }

@@ -11,7 +11,6 @@ root.render(
     </React.StrictMode>
 );
 
-// 여기서 mousedown 기본 동작을 막습니다.
 document.addEventListener('mousedown', (event) => {
     event.preventDefault();
 });
