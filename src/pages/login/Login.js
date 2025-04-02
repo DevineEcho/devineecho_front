@@ -18,8 +18,6 @@ function Login({ onLoginSuccess }) {
         console.error("onLoginSuccess가 정의되지 않았음!");
     }
 
-
-    // 🔹 자동 포커스 설정
     useEffect(() => {
         setTimeout(() => {
             if (usernameRef.current) {
@@ -28,7 +26,6 @@ function Login({ onLoginSuccess }) {
         }, 100);
     }, []);
 
-        // 🔹 일반 로그인
         const handleLogin = async (e) => {
             e.preventDefault();
             try {
@@ -41,13 +38,13 @@ function Login({ onLoginSuccess }) {
                 if (response.ok) {
                     const token = await response.text();
                     localStorage.setItem('token', token);
-                    console.log("✅ 일반 로그인 성공! 토큰 저장 완료");
+                    console.log("일반 로그인 성공! 토큰 저장 완료");
     
                     if (onLoginSuccess) {
-                        console.log("✅ onLoginSuccess 실행됨!");
+                        console.log("onLoginSuccess 실행됨!");
                         onLoginSuccess();
                     } else {
-                        console.error("❌ onLoginSuccess가 정의되지 않음!");
+                        console.error("onLoginSuccess가 정의되지 않음!");
                     }
     
                     navigate('/');
@@ -67,7 +64,6 @@ function Login({ onLoginSuccess }) {
         
     
 
-    // 🔹 회원가입 처리
     const handleSignup = async (e) => {
         e.preventDefault();
 
@@ -102,7 +98,6 @@ function Login({ onLoginSuccess }) {
         }
     };
 
-    // 🔹 비밀번호 찾기 처리
     const handlePasswordRecovery = async () => {
         try {
             const response = await fetch('http://localhost:8080/api/auth/recover', {

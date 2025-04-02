@@ -14,24 +14,22 @@ function Main() {
     const pixiContainer = useRef(null);
     const navigate = useNavigate();
 
-    // ✅ localStorage에서 로그인 여부 확인
     useEffect(() => {
         const token = localStorage.getItem("token");
         if (token) {
-            console.log("✅ 저장된 토큰 발견, 자동 로그인 처리");
+            console.log("저장된 토큰 발견, 자동 로그인 처리");
             setIsLoggedIn(true);
         }
     }, []);
 
-    // ✅ 로그인 성공 시 실행될 함수 (로딩 영상 재생 후 게임 화면 이동)
     const handleLoginSuccess = () => {
-        console.log("✅ handleLoginSuccess 실행됨");
+        console.log("handleLoginSuccess 실행됨");
         setIsLoading(true);
 
         setTimeout(() => {
             setIsLoggedIn(true);
             setIsLoading(false);
-            navigate("/"); // ✅ 로그인 성공 후 메인 화면으로 이동
+            navigate("/");
         }, 3000);
     };
 

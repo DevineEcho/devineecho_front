@@ -15,51 +15,57 @@ function KakaoLoginHandler({ onLoginSuccess }) {
         const code = urlParams.get("code");
 
         if (!code) {
-            console.log("❌ 카카오 로그인 코드 없음. useEffect 종료");
+            console.log(" 카카오 로그인 코드 없음. useEffect 종료");
             return;
         }
-
-        // ✅ URL에서 즉시 인증 코드 제거 (재사용 방지)
         window.history.replaceState({}, document.title, window.location.pathname);
 
-        // ✅ 중복 요청 방지 (이미 로그인된 경우 요청 안 보냄)
         if (localStorage.getItem("token")) {
-            console.log("✅ 이미 로그인됨, 로그인 요청 중단");
+            console.log(" 이미 로그인됨, 로그인 요청 중단");
             return;
         }
 
-        console.log("🔹 카카오 로그인 코드 감지:", code);
+        console.log(" 카카오 로그인 코드 감지:", code);
 
-        fetch(`http://localhost:8080/api/auth/kakao/callback?code=${code}`)
+        fetch(`http://192.168.0.39:8080/api/auth/kakao/callback?code=${code}`)
             .then(response => {
-                console.log("🔹 fetch 요청 완료, 응답 상태:", response.status);
+                console.log(" fetch 요청 완료, 응답 상태:", response.status);
                 if (!response.ok) {
                     throw new Error(`HTTP error! Status: ${response.status}`);
                 }
                 return response.json();
             })
             .then(data => {
+                console.log("🔍 응답 데이터:", data);
+                
                 if (data.token) {
-                    console.log("✅ 카카오 로그인 성공, 토큰 저장");
+                    console.log(" 카카오 로그인 성공, 토큰 저장");
                     localStorage.setItem("token", data.token);
                     localStorage.setItem("username", data.username);
                     localStorage.setItem("phoneNumber", data.phoneNumber);
-                    console.log("✅ localStorage 저장 완료");
+                    console.log(" localStorage 저장 완료");
 
                     alert(`카카오 로그인 성공! \n유저네임: ${data.username} \n전화번호: ${data.phoneNumber}`);
 
-                    // ✅ 로딩 화면을 표시하고 3초 후 게임 화면으로 이동
+
                     setTimeout(() => {
+                        console.log(" setIsLoading(false) 실행됨!"); 
                         setIsLoading(false);
-                        if (onLoginSuccess) onLoginSuccess();
-                        navigate("/"); // ✅ 메인 화면으로 이동
+                        if (onLoginSuccess) {
+                            console.log(" onLoginSuccess 실행됨!");
+                            onLoginSuccess();
+                        } else {
+                            console.error(" onLoginSuccess가 정의되지 않음!");
+                        }
+                        console.log(" navigate('/') 실행됨!");
+                        navigate("/");
                     }, 3000);
                 } else {
-                    alert("카카오 로그인 실패");
+                    alert(" 카카오 로그인 실패 - 응답에 토큰 없음");
                 }
             })
             .catch(error => {
-                console.error("❌ 카카오 로그인 오류:", error);
+                console.error(" 카카오 로그인 오류:", error);
                 alert("카카오 로그인 중 오류 발생");
             });
 
@@ -76,11 +82,14 @@ function KakaoLoginHandler({ onLoginSuccess }) {
                             autoPlay
                             muted
                             className="loading-video"
-                            onEnded={() => setIsLoading(false)}
+                            onEnded={() => {
+                                console.log("로딩 비디오 끝남! isLoading(false) 적용");
+                                setIsLoading(false);
+                            }}
                         />
                     </div>
                 ) : (
-                    <div>로그인 중...</div>
+                    <div> 로그인 중... (게임 화면으로 이동 준비 완료)</div>
                 )}
             </div>
         </div>
